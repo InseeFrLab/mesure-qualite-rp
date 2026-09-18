@@ -1,0 +1,37 @@
+# Parametres par campagne. Le questionnaire evolue d'un millesime a l'autre :
+# tout ce qui en depend vit ici, jamais dans le code.
+
+bucket: projet-mesure-qualite-rp
+
+campagnes:
+  RG25:
+    racine: data/raw/RG25
+    ficod: FICOD2599V3.txt
+    fiqual: RP_PMQ_FIQUAL2599.txt
+    bie: BIE
+    positions: positions/FL_2025.yaml
+  RG26:
+    racine: data/raw/RG26
+    bie: BIE
+    divergences: Divergences
+    positions: positions/FL_2026.yaml
+
+# Zones d'un questionnaire, telles que le prestataire les livre.
+zones:
+  feuille_logement: [IDE, ADR, TABA, TABB, TABC, TABD, LOG]
+  bulletin: [BI]
+  cas_particuliers: [BIC, BIEP, FC, FLNE]
+
+# Types d'enregistrement du Ficod et du Fiqual.
+types_enregistrement:
+  "1": feuille de logement metropole
+  "2": feuille de logement DOM
+  "3": bulletin individuel
+  "5": feuille de logement non enquetee
+  "6": feuille de communaute
+  "7": bulletin individuel de communaute
+  "8": bulletin individuel etablissement particulier
+  "A": tableau A - liste des personnes
+  "B": tableau B
+  "C": tableau C
+  "D": tableau D

@@ -1,0 +1,44 @@
+[project]
+name = "mesure-qualite-rp"
+version = "0.1.0"
+description = "Production du fichier Fiqual du recensement par des moyens automatiques"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyarrow>=14.0",
+    "s3fs>=2023.10",
+    "pyyaml>=6.0",
+    "pillow>=10.0",
+    "openpyxl>=3.1",
+    "rapidfuzz>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "nbstripout>=0.6",
+    "ruff>=0.1",
+    "matplotlib>=3.7",
+    "jupyterlab>=4.0",
+]
+vision = [
+    "opencv-python-headless>=4.8",
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "transformers>=4.35",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"

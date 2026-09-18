@@ -1,0 +1,33 @@
+# Donnees : rien de ce qui vient du bucket ne doit etre versionne
+data/
+*.jpg
+*.jpeg
+*.png
+*.txt
+*.xlsx
+*.csv
+*.parquet
+vignettes/
+
+# Sorties de notebooks et caches
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environnements
+.venv/
+venv/
+.env
+
+# Modeles et artefacts
+models/
+mlruns/
+*.pt
+*.pth
+*.onnx
+
+# Systeme
+.DS_Store
