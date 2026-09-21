@@ -12,6 +12,8 @@ dependencies = [
     "pillow>=10.0",
     "openpyxl>=3.1",
     "rapidfuzz>=3.0",
+    "matplotlib>=3.10.9",
+    "opencv-python>=5.0.0.93",
 ]
 
 [project.optional-dependencies]
@@ -42,3 +44,8 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 88
 target-version = "py310"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+]

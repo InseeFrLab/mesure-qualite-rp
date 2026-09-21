@@ -48,8 +48,12 @@ séparément mesurables, ce qu'une architecture monolithique ne permet pas.
 - Le code qui se stabilise quitte les notebooks pour `src/`, avec ses tests.
 
 ## Installation
+    uv sync --all-extras
+    uv run nbstripout --install
+# Installer la librairie systéme dont OpenCV a besoin
+    sudo apt update && sudo apt install -y libgl1
 
-    python -m venv .venv
-    source .venv/bin/activate
-    pip install -e ".[dev]"
-    nbstripout --install
+# Claude code
+
+J'utilise claude code pour debug et génération de certains codes que j'adapte. ça reste totalement sous contrôle.  
+    
