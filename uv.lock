@@ -2655,6 +2655,7 @@ name = "mesure-qualite-rp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "huggingface-hub" },
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "matplotlib", version = "3.11.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "mlflow" },
@@ -2672,6 +2673,8 @@ dependencies = [
     { name = "rapidfuzz", version = "3.14.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "requests" },
     { name = "s3fs" },
+    { name = "torch" },
+    { name = "transformers" },
 ]
 
 [package.optional-dependencies]
@@ -2697,6 +2700,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "huggingface-hub", specifier = ">=1.32.0" },
     { name = "jupyterlab", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "matplotlib", specifier = ">=3.10.9" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.7" },
@@ -2715,8 +2719,10 @@ requires-dist = [
     { name = "requests", specifier = ">=2.34.2" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
     { name = "s3fs", specifier = ">=2023.10" },
+    { name = "torch", specifier = ">=2.14.0" },
     { name = "torch", marker = "extra == 'vision'", specifier = ">=2.0" },
     { name = "torchvision", marker = "extra == 'vision'", specifier = ">=0.15" },
+    { name = "transformers", specifier = ">=5.17.0" },
     { name = "transformers", marker = "extra == 'vision'", specifier = ">=4.35" },
 ]
 provides-extras = ["dev", "vision"]
