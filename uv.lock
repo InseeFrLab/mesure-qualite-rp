@@ -2696,6 +2696,7 @@ vision = [
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
+    { name = "nbstripout" },
 ]
 
 [package.metadata]
@@ -2728,7 +2729,10 @@ requires-dist = [
 provides-extras = ["dev", "vision"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ipykernel", specifier = ">=7.3.0" }]
+dev = [
+    { name = "ipykernel", specifier = ">=7.3.0" },
+    { name = "nbstripout", specifier = ">=0.9.1" },
+]
 
 [[package]]
 name = "mistune"
