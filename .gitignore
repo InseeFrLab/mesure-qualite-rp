@@ -31,3 +31,4 @@ mlruns/
 
 # Systeme
 .DS_Store
+*.egg-info/
