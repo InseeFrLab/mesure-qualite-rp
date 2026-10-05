@@ -1,0 +1,274 @@
+---
+title: "Fiqual automatique : où en est-on ?"
+subtitle: "Point d'étape — lecture des noms et prénoms manuscrits"
+author: "Faris Azibert Alwali"
+date: "2026-10-14"
+lang: fr
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    embed-resources: true
+    width: 1280
+    height: 720
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+```{python}
+#| include: false
+# Tous les chiffres viennent des essais RETENUS dans MLflow (voir suivi.py).
+# Retenir un nouvel essai, puis `quarto render` : la présentation se met à jour.
+from pathlib import Path
+import pandas as pd
+import matplotlib.pyplot as plt
+
+import os, sys
+# La racine du projet : le premier dossier parent qui contient pyproject.toml
+RACINE = next((p for p in [Path.cwd(), *Path.cwd().parents]
+               if (p / "pyproject.toml").exists()), Path.cwd())
+DOSSIER = RACINE / "notebooks"           # CSV locaux, utilises seulement en secours
+sys.path.insert(0, str(RACINE / "src"))
+sys.path.insert(0, str(DOSSIER))         # avant rangement, suivi.py y est encore
+
+# Si le serveur MLflow ne repond pas, on ne veut pas attendre des minutes
+os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "10")
+os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "0")
+
+SOURCES = {}
+
+def charger(etude, fichier):
+    """L'essai RETENU dans MLflow ; a defaut, le CSV local (signale)."""
+    try:
+        try:
+            from mesure_qualite.evaluation import suivi
+        except ImportError:
+            import suivi
+        r = suivi.resultats(etude)
+        SOURCES[etude] = r["source"]
+        return pd.read_csv(r["fichiers"][fichier])
+    except Exception as e:
+        f = DOSSIER / fichier
+        if f.exists():
+            SOURCES[etude] = f"fichier local {fichier}, NON trace dans MLflow ({type(e).__name__})"
+            return pd.read_csv(f)
+        SOURCES[etude] = "absent"
+        return None
+
+cv = charger("cv-trocr", "resume_cv.csv")
+comp = charger("complementarite", "complementarite.csv")
+bascule = charger("bascule-illisible", "bascule_illisible.csv")
+
+# Repère fixe : gemma4 sur ligne isolée, mesuré dans un notebook antérieur
+GEMMA4_LIGNE = {"NOM": 58.6, "PRENOM": 68.0}
+
+t_cv = cv.set_index("champ")
+t_cp = comp.set_index("champ")
+
+def pct(x):
+    return f"{x:.1f} %".replace(".", ",")
+
+def ic(champ):
+    return t_cv.loc[champ, "IC95"].replace(".", ",")
+
+trocr_tous = t_cv.loc["TOUS", "apres_%"]
+trocr_avant = t_cv.loc["TOUS", "avant_%"]
+bloc_tous = t_cp.loc["TOUS", "bloc"] * 100
+oracle_tous = t_cp.loc["TOUS", "oracle"] * 100
+marge_tous = t_cp.loc["TOUS", "marge"] * 100
+co_echec = t_cp.loc["TOUS", "co_echec"]
+trocr_seul = int(t_cp.loc["TOUS", "trocr_seul"])
+n_tous = int(t_cp.loc["TOUS", "N"])
+aucun = int(t_cp.loc["TOUS", "aucun"])
+ic_tous = ic("TOUS")
+co_echec_txt = f"{co_echec:.2f}".replace(".", ",")
+```
+
+## L'objectif
+
+- Produire le **Fiqual sans arbitrage humain**, pour la campagne de février.
+- La barre à atteindre n'est pas zéro erreur : c'est **le taux d'erreur de la saisie actuelle** (PMQ).
+- Sans humain dans la boucle, une erreur **inventée** n'est rattrapée par personne. C'est elle qu'il faut surveiller en priorité.
+
+::: notes
+Insister : on ne vise pas la perfection, on vise à faire au moins aussi bien que la saisie
+humaine actuelle. Le chiffre de référence du PMQ est demandé au SeRN.
+:::
+
+## Ce qui a été mesuré
+
+- **169 bulletins** de RG25, soit **`{python} n_tous` lignes** (nom et prénom).
+- Référence : le Fiqual saisi par le PMQ.
+- Méthode :
+  - validation croisée en **5 blocs, découpés par bulletin** — une même écriture n'est jamais à la fois en apprentissage et en test ;
+  - intervalles de confiance de **Wilson** ;
+  - test de **McNemar** pour comparer deux systèmes sur les mêmes lignes.
+
+::: notes
+Le découpage par bulletin évite que le modèle ait vu l'écriture de la personne pendant
+l'apprentissage. Sans cela, le chiffre serait trop optimiste.
+:::
+
+## Résultat principal
+
+```{python}
+#| fig-align: center
+champs = ["NOM", "PRENOM"]
+series = {
+    "gemma4 sur bloc": [t_cp.loc[c, "bloc"] * 100 for c in champs],
+    "gemma4 sur ligne": [GEMMA4_LIGNE[c] for c in champs],
+    "TrOCR ajusté": [t_cv.loc[c, "apres_%"] for c in champs],
+}
+couleurs = ["#1f4e79", "#9db8d9", "#c0504d"]
+
+fig, ax = plt.subplots(figsize=(10, 4.6))
+largeur = 0.26
+for k, (nom, vals) in enumerate(series.items()):
+    x = [i + (k - 1) * largeur for i in range(len(champs))]
+    barres = ax.bar(x, vals, largeur, label=nom, color=couleurs[k])
+    if nom == "TrOCR ajusté":
+        bas, haut = [], []
+        for c, v in zip(champs, vals):
+            lo, hi = [float(s) for s in t_cv.loc[c, "IC95"].strip("[]").split(";")]
+            bas.append(v - lo)
+            haut.append(hi - v)
+        ax.errorbar(x, vals, yerr=[bas, haut], fmt="none", ecolor="black", capsize=5)
+    for b, v in zip(barres, vals):
+        ax.text(b.get_x() + b.get_width() / 2, v + 2, f"{v:.1f}".replace(".", ","),
+                ha="center", fontsize=11)
+ax.set_xticks(range(len(champs)))
+ax.set_xticklabels(champs, fontsize=12)
+ax.set_ylabel("lignes lues exactement (%)")
+ax.set_ylim(0, 100)
+ax.spines[["top", "right"]].set_visible(False)
+ax.legend(frameon=False, loc="upper left", ncol=3)
+plt.tight_layout()
+plt.show()
+```
+
+**gemma4 sur bloc : `{python} pct(bloc_tous)`** des lignes lues exactement, nettement devant les autres approches (McNemar p < 0,001).
+
+::: notes
+Le « bloc » est l'extrait du bulletin avec les libellés imprimés « Nom : » et « Prénom : ».
+La ligne isolée est la même écriture, découpée seule. L'écart est d'environ 20 points.
+Ce n'est pas encore expliqué : contexte des libellés, ou cadrage trop serré des lignes.
+:::
+
+## L'ajustement d'un petit modèle fonctionne… mais ne suffit pas
+
+- TrOCR, modèle spécialisé de 334 millions de paramètres, ajusté sur nos données :
+  **`{python} pct(trocr_avant)` → `{python} pct(trocr_tous)`** de lignes exactes.
+- Intervalle de confiance : **`{python} ic_tous`**.
+- C'est une **preuve de faisabilité**, pas un candidat pour la production : il reste
+  **environ 20 points derrière** gemma4 sur bloc.
+
+::: notes
+Le gain de l'ajustement est réel et mesuré proprement, sur 335 lignes et non plus sur 42.
+Mais il ne rattrape pas le meilleur système, qui ne demande aucun entraînement.
+:::
+
+## Combiner les deux ? Le gain est faible
+
+- Les deux systèmes **échouent souvent sur les mêmes lignes** : co-échec de
+  **`{python} co_echec_txt`** (1 = erreurs indépendantes).
+- TrOCR ne rattrape que **`{python} trocr_seul` lignes sur `{python} n_tous`**.
+- Plafond théorique en combinant : **`{python} pct(oracle_tous)`**, soit
+  **+`{python} pct(marge_tous)`** — à condition de savoir à chaque ligne lequel croire.
+
+```{python}
+#| output: asis
+if bascule is not None:
+    b = bascule.set_index("champ").loc["TOUS"]
+    print(f"- Règle simple testée (prendre TrOCR quand gemma4 répond « ILLISIBLE ») : "
+          f"**{pct(b['systeme_exact_%'])}**, avec "
+          f"{int(b['trocr_juste_quand_avoue'])} lignes rattrapées.")
+else:
+    print("- Règle simple (prendre TrOCR quand gemma4 répond « ILLISIBLE ») : "
+          "*mesure en cours*.")
+```
+
+::: notes
+Ajouter un modèle à entraîner et à maintenir pour quelques points au mieux n'est pas un
+bon échange pour la production. Je ne recommande pas cette combinaison.
+:::
+
+## Les erreurs qui comptent : avouées ou inventées
+
+```{python}
+#| output: asis
+if bascule is not None:
+    b = bascule.set_index("champ")
+    print("| | NOM | PRÉNOM | Ensemble |")
+    print("|---|---|---|---|")
+    for col, lib in [("gemma4_exact_%", "Lu exactement"),
+                     ("gemma4_avoue_%", "Erreur **avouée** (ILLISIBLE)"),
+                     ("gemma4_invente_%", "Erreur **inventée** (silencieuse)")]:
+        print(f"| {lib} | " + " | ".join(pct(b.loc[c, col]) for c in ["NOM", "PRENOM", "TOUS"]) + " |")
+    print("\nL'erreur inventée est à comparer au **taux d'erreur du PMQ** (demandé au SeRN).")
+else:
+    print("*Tableau disponible quand l'étude « bascule-illisible » aura un essai retenu.*")
+```
+
+::: notes
+Une erreur avouée peut être traitée : on sait qu'il y a un doute. Une erreur inventée
+passe en production sans signal. C'est le chiffre décisif pour l'automatique complet.
+:::
+
+## Recommandation
+
+**gemma4 sur bloc, appelé via le service, sans modèle ajusté.**
+
+| | Appel au service | Modèle ajusté |
+|---|---|---|
+| Modèle à stocker et versionner | non | oui (1,4 Go) |
+| Chaîne de réentraînement | non | oui |
+| Réentraînement si le formulaire change | non | probablement |
+| Gain mesuré par rapport à gemma4 sur bloc | — | **aucun** |
+
+::: notes
+C'est la réponse directe à la question de la maintenance : la solution la plus simple est
+aussi la plus performante.
+:::
+
+## Ce qui reste à démontrer
+
+1. **Tenir sur une autre campagne** : validation sur RG26.
+2. **Faire au moins aussi bien que le PMQ** : comparer les erreurs inventées au taux d'erreur de la saisie actuelle (arbitrages du SeRN).
+3. **Détecter une dégradation sans humain** : indicateurs de dérive (taux d'ILLISIBLE, longueur des noms, accord entre modèles). Le service n'est pas parfaitement stable : environ 2 points d'écart entre deux exécutions identiques.
+4. **Rendre le système maintenable** : règles de gestion dans un fichier de configuration.
+5. **L'outre-mer**, où le format des bulletins diffère.
+
+## Prochaines étapes
+
+| Échéance | Action |
+|---|---|
+| Fin octobre | Validation sur RG26 ; règles en configuration |
+| Novembre | Comparaison au PMQ (après retour du SeRN) ; indicateurs de dérive |
+| Décembre | Outre-mer ; chaîne complète sur un échantillon |
+| Février | Production du Fiqual automatique |
+
+::: notes
+Dates indicatives, à ajuster avec Cédric avant la réunion.
+:::
+
+## D'où viennent ces chiffres
+
+```{python}
+#| output: asis
+libelles = {"cv-trocr": "Validation croisée TrOCR",
+            "complementarite": "Complémentarité gemma4 / TrOCR",
+            "bascule-illisible": "Bascule sur ILLISIBLE"}
+print("| Étude | Source |")
+print("|---|---|")
+for etude, lib in libelles.items():
+    print(f"| {lib} | {SOURCES.get(etude, 'absent')} |")
+```
+
+Chaque chiffre de cette présentation est rejouable : essai MLflow, version du code, graine.
+
+::: notes
+Cette diapositive répond d'avance à la question « d'où sort ce chiffre ? ».
+Si une ligne indique « fichier local », l'essai n'a pas été enregistré : à corriger avant la réunion.
+:::
