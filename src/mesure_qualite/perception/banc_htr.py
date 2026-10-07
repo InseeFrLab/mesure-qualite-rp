@@ -442,3 +442,98 @@ def trocr_ajuster(source: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.
     del modele, opt, meilleur_etat
     _liberer(appareil)
     return dict(zip(test.id, lus_test)), courbe, time.time() - t0, meilleure_epoque + 1
+
+
+# --------------------------------------------------------------------------- TeleOCR
+
+TELEOCR_DEPOTS = ["XingChen-AGI/TeleOCR", "StarDoc-AI/TeleOCR"]
+CONSIGNE_TEXTE = "Please output the text content from the image."
+CONSIGNE_MISE_EN_PAGE = "Analyze the image layout."
+
+
+def teleocr_charger(depots=TELEOCR_DEPOTS):
+    """Charge TeleOCR (modele vision-langage d'analyse de documents, ~1,2 G parametres).
+
+    ATTENTION : trust_remote_code=True execute du code fourni par le depot du modele.
+    A faire valider avant tout usage sur des donnees reelles.
+    """
+    import torch
+    from transformers import AutoModel, AutoProcessor
+
+    erreurs = []
+    for depot in depots:
+        try:
+            proc = AutoProcessor.from_pretrained(depot, trust_remote_code=True, use_fast=True)
+            try:
+                modele = AutoModel.from_pretrained(depot, trust_remote_code=True, dtype=torch.bfloat16)
+            except TypeError:
+                modele = AutoModel.from_pretrained(depot, trust_remote_code=True,
+                                                   torch_dtype=torch.bfloat16)
+            appareil = "cuda" if torch.cuda.is_available() else "cpu"
+            return proc, modele.to(appareil).eval(), depot
+        except Exception as e:
+            erreurs.append(f"{depot} : {type(e).__name__}: {str(e)[:300]}")
+    raise RuntimeError("TeleOCR ne se charge pas :\n  " + "\n  ".join(erreurs))
+
+
+def teleocr_lire(proc, modele, image, consigne=CONSIGNE_TEXTE, max_jetons=512, taille=None) -> str:
+    """Une image + une consigne -> le texte produit par TeleOCR (methode de sa fiche officielle)."""
+    import torch
+    im = image.convert("RGB")
+    if taille:
+        im = im.resize((taille, taille), Image.BICUBIC)
+    messages = [{"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": consigne}]}]
+    invite = proc.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    entrees = proc(text=[invite], images=[im], padding=True,
+                   return_tensors="pt").to(device=modele.device, dtype=modele.dtype)
+    with torch.no_grad():
+        sortie = modele.generate(**entrees, use_cache=True, max_new_tokens=max_jetons, do_sample=False)
+    ids = sortie.cpu().tolist()[0][len(entrees.input_ids[0]):]
+    return proc.batch_decode([ids], skip_special_tokens=True,
+                             clean_up_tokenization_spaces=False)[0].strip()
+
+
+def _majuscules(t: str) -> str:
+    return unicodedata.normalize("NFKD", str(t)).encode("ascii", "ignore").decode().upper()
+
+
+def extraire_champs(texte: str) -> dict:
+    """Retrouve le nom et le prenom dans un texte lu sur un bloc ou une page,
+    grace aux libelles imprimes (« Nom : », « Prenom(s) : »)."""
+    plat = "\n".join(_majuscules(l) for l in str(texte).splitlines())
+    res = {}
+    for champ, libelle in [("PRENOM", r"\bPRENOMS?\b"), ("NOM", r"\bNOM\b")]:
+        m = (re.search(libelle + r"[^:\n]{0,25}:\s*([^\n]*)", plat)
+             or re.search(libelle + r"\s+([^\n]*)", plat))
+        valeur = m.group(1) if m else ""
+        valeur = re.split(r"\bPRENOMS?\b|\bNOM\b|\bSEXE\b|\bNE\b|\bDATE\b", valeur)[0]
+        res[champ] = normaliser(valeur)
+    return res
+
+
+def boites(texte: str, taille: int = 1036) -> list:
+    """Les rectangles (x1, y1, x2, y2) trouves dans une sortie de mise en page, en fractions
+    de l'image. Hypothese : coordonnees en pixels de l'image redimensionnee (taille x taille),
+    ou deja en fractions si toutes <= 1. A verifier sur les images de controle."""
+    nombre = r"(-?\d+(?:\.\d+)?)"
+    trouves = re.findall(r"\[\s*" + r"\s*,\s*".join([nombre] * 4) + r"\s*\]", texte)
+    trouves += re.findall(r"\(\s*" + nombre + r"\s*,\s*" + nombre + r"\s*\)\s*,\s*\(\s*"
+                          + nombre + r"\s*,\s*" + nombre + r"\s*\)", texte)
+    b = [tuple(float(v) for v in t) for t in trouves]
+    b = [x for x in b if x[2] > x[0] and x[3] > x[1]]
+    if not b:
+        return []
+    echelle = 1.0 if max(max(x) for x in b) <= 1.0 else float(taille)
+    return [tuple(v / echelle for v in x) for x in b]
+
+
+def couverture(zone, liste_boites) -> float:
+    """Part de la zone de reference (x, y, l, h en fractions) couverte par la meilleure boite."""
+    zx1, zy1, zx2, zy2 = zone[0], zone[1], zone[0] + zone[2], zone[1] + zone[3]
+    aire = max(1e-9, (zx2 - zx1) * (zy2 - zy1))
+    meilleure = 0.0
+    for x1, y1, x2, y2 in liste_boites:
+        inter = max(0.0, min(x2, zx2) - max(x1, zx1)) * max(0.0, min(y2, zy2) - max(y1, zy1))
+        meilleure = max(meilleure, inter / aire)
+    return meilleure
