@@ -1,7 +1,7 @@
 ---
 title: "Fiqual automatique : point d'étape"
-subtitle: "Lire automatiquement les noms et prénoms manuscrits"
-author: "Faris Azibert Alwali"
+subtitle: "noms et prénoms manuscrits"
+author: ""
 date: "2026-10-14"
 lang: fr
 format:
@@ -21,17 +21,20 @@ jupyter: mesure-qualite-rp
 #| include: false
 # Tous les chiffres viennent des essais RETENUS dans MLflow (voir suivi.py).
 # Retenir un nouvel essai, puis `quarto render` : la présentation se met à jour.
+# Si un résultat manque (MLflow injoignable, fichier absent), la diapositive le DIT au lieu de
+# faire échouer tout le rendu : voir la diapositive « D'où viennent les chiffres ».
 from pathlib import Path
-import pandas as pd
-import matplotlib.pyplot as plt
+import os
+import sys
 
-import os, sys
-# La racine du projet : le premier dossier parent qui contient pyproject.toml
+import matplotlib.pyplot as plt
+import pandas as pd
+
 RACINE = next((p for p in [Path.cwd(), *Path.cwd().parents]
                if (p / "pyproject.toml").exists()), Path.cwd())
 DOSSIER = RACINE / "notebooks"           # CSV locaux, utilises seulement en secours
 sys.path.insert(0, str(RACINE / "src"))
-sys.path.insert(0, str(DOSSIER))         # avant rangement, suivi.py y est encore
+sys.path.insert(0, str(DOSSIER))
 
 # Si le serveur MLflow ne repond pas, on ne veut pas attendre des minutes
 os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "10")
@@ -39,8 +42,9 @@ os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "0")
 
 SOURCES = {}
 
+
 def charger(etude, fichier):
-    """L'essai RETENU dans MLflow ; a defaut, le CSV local (signale)."""
+    """L'essai RETENU dans MLflow ; a defaut, le CSV local (signale) ; sinon None."""
     try:
         try:
             from mesure_qualite.evaluation import suivi
@@ -52,15 +56,16 @@ def charger(etude, fichier):
     except Exception as e:
         f = DOSSIER / fichier
         if f.exists():
-            SOURCES[etude] = f"fichier local {fichier}, NON trace dans MLflow ({type(e).__name__})"
+            SOURCES[etude] = f"fichier local {fichier}, NON tracé dans MLflow ({type(e).__name__})"
             return pd.read_csv(f)
-        SOURCES[etude] = "absent"
+        SOURCES[etude] = f"absent ({type(e).__name__} : {str(e)[:80]})"
         return None
 
-cv = charger("cv-trocr", "resume_cv.csv")
 
-# Resultats du banc d'essai (notebook 06), lus sur le disque : ~/work/banc-htr/resultats
+# Resultats du banc d'essai, lus sur le disque : ~/work/banc-htr/resultats
 BANC_RES = Path.home() / "work" / "banc-htr" / "resultats"
+
+
 def lire_banc(nom):
     f = BANC_RES / nom
     try:
@@ -68,35 +73,47 @@ def lire_banc(nom):
         return d if len(d) else None
     except Exception:
         return None
+
+
+def pct(x):
+    try:
+        return f"{float(x):.1f} %".replace(".", ",")
+    except (TypeError, ValueError):
+        return "—"
+
+
+def virgule(x):
+    return str(x).replace(".", ",")
+
+
+cv = charger("cv-trocr", "resume_cv.csv")
+comp = charger("complementarite", "complementarite.csv")
+bascule = charger("bascule-illisible", "bascule_illisible.csv")
 phase1 = lire_banc("banc_phase1.csv")
 cas = lire_banc("banc_cas_par_ligne.csv")
 courbe = lire_banc("rg26_courbe_volume.csv")
-comp = charger("complementarite", "complementarite.csv")
-bascule = charger("bascule-illisible", "bascule_illisible.csv")
+tg = lire_banc("teleocr_vs_multimodaux.csv")
 
 # Repère fixe : gemma4 sur ligne isolée, mesuré dans un notebook antérieur
 GEMMA4_LIGNE = {"NOM": 58.6, "PRENOM": 68.0}
 
-t_cv = cv.set_index("champ")
-t_cp = comp.set_index("champ")
+t_cv = cv.set_index("champ") if cv is not None else None
+t_cp = comp.set_index("champ") if comp is not None else None
 
-def pct(x):
-    return f"{x:.1f} %".replace(".", ",")
 
-def ic(champ):
-    return t_cv.loc[champ, "IC95"].replace(".", ",")
+def val(table, ligne, colonne, facteur=1.0):
+    """Une valeur d'un tableau, ou None si le tableau ou la valeur manque."""
+    try:
+        return float(table.loc[ligne, colonne]) * facteur
+    except Exception:
+        return None
 
-trocr_tous = t_cv.loc["TOUS", "apres_%"]
-trocr_avant = t_cv.loc["TOUS", "avant_%"]
-bloc_tous = t_cp.loc["TOUS", "bloc"] * 100
-oracle_tous = t_cp.loc["TOUS", "oracle"] * 100
-marge_tous = t_cp.loc["TOUS", "marge"] * 100
-co_echec = t_cp.loc["TOUS", "co_echec"]
-trocr_seul = int(t_cp.loc["TOUS", "trocr_seul"])
-n_tous = int(t_cp.loc["TOUS", "N"])
-aucun = int(t_cp.loc["TOUS", "aucun"])
-ic_tous = ic("TOUS")
-co_echec_txt = f"{co_echec:.2f}".replace(".", ",")
+
+trocr_tous = val(t_cv, "TOUS", "apres_%")
+trocr_avant = val(t_cv, "TOUS", "avant_%")
+bloc_tous = val(t_cp, "TOUS", "bloc", 100)
+n_tous = int(val(t_cp, "TOUS", "N") or 0) or "—"
+ic_tous = virgule(t_cv.loc["TOUS", "IC95"]) if t_cv is not None and "TOUS" in t_cv.index else "—"
 ```
 
 ## Ce que je cherche à faire
@@ -104,7 +121,6 @@ co_echec_txt = f"{co_echec:.2f}".replace(".", ",")
 L'idée est de produire le Fiqual de façon automatique.
 
 Je ne vise pas zéro erreur. L'objectif est de faire au moins aussi bien que la saisie actuelle du PMQ.
-
 
 ::: notes
 Bien insister : on ne cherche pas la perfection, on veut faire au moins aussi bien que le PMQ.
@@ -122,44 +138,48 @@ Pour que les chiffres tiennent la route :
 - quand je compare deux modèles, je le fais sur les mêmes lignes, avec un test apparié.
 
 ::: notes
-l'écriture de la personne et le résultat est trop optimiste. D'où le découpage par bulletin.
+Sinon le modèle reconnaît l'écriture de la personne et le résultat est trop optimiste. D'où le découpage par bulletin.
 :::
 
 ## Premier résultat : ce qu'on montre au modèle compte beaucoup
 
 ```{python}
 #| fig-align: center
-champs = ["NOM", "PRENOM"]
-series = {
-    "gemma4 sur bloc": [t_cp.loc[c, "bloc"] * 100 for c in champs],
-    "gemma4 sur ligne": [GEMMA4_LIGNE[c] for c in champs],
-    "TrOCR ajusté": [t_cv.loc[c, "apres_%"] for c in champs],
-}
-couleurs = ["#1f4e79", "#9db8d9", "#c0504d"]
-
-fig, ax = plt.subplots(figsize=(10, 4.6))
-largeur = 0.26
-for k, (nom, vals) in enumerate(series.items()):
-    x = [i + (k - 1) * largeur for i in range(len(champs))]
-    barres = ax.bar(x, vals, largeur, label=nom, color=couleurs[k])
-    if nom == "TrOCR ajusté":
-        bas, haut = [], []
-        for c, v in zip(champs, vals):
-            lo, hi = [float(s) for s in t_cv.loc[c, "IC95"].strip("[]").split(";")]
-            bas.append(v - lo)
-            haut.append(hi - v)
-        ax.errorbar(x, vals, yerr=[bas, haut], fmt="none", ecolor="black", capsize=5)
-    for b, v in zip(barres, vals):
-        ax.text(b.get_x() + b.get_width() / 2, v + 2, f"{v:.1f}".replace(".", ","),
-                ha="center", fontsize=11)
-ax.set_xticks(range(len(champs)))
-ax.set_xticklabels(champs, fontsize=12)
-ax.set_ylabel("lignes lues exactement (%)")
-ax.set_ylim(0, 100)
-ax.spines[["top", "right"]].set_visible(False)
-ax.legend(frameon=False, loc="upper left", ncol=3)
-plt.tight_layout()
-plt.show()
+#| output: asis
+if t_cv is None or t_cp is None:
+    print("\n*Graphique à venir : résultats de la validation croisée ou de la complémentarité "
+          "introuvables (voir la dernière diapositive).*\n")
+else:
+    champs = ["NOM", "PRENOM"]
+    series = {
+        "gemma4 sur bloc": [val(t_cp, c, "bloc", 100) for c in champs],
+        "gemma4 sur ligne": [GEMMA4_LIGNE[c] for c in champs],
+        "TrOCR ajusté": [val(t_cv, c, "apres_%") for c in champs],
+    }
+    couleurs = ["#1f4e79", "#9db8d9", "#c0504d"]
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    largeur = 0.26
+    for k, (nom, vals) in enumerate(series.items()):
+        x = [i + (k - 1) * largeur for i in range(len(champs))]
+        barres = ax.bar(x, vals, largeur, label=nom, color=couleurs[k])
+        if nom == "TrOCR ajusté":
+            bas, haut = [], []
+            for c, v in zip(champs, vals):
+                lo, hi = [float(s) for s in str(t_cv.loc[c, "IC95"]).strip("[]").split(";")]
+                bas.append(v - lo)
+                haut.append(hi - v)
+            ax.errorbar(x, vals, yerr=[bas, haut], fmt="none", ecolor="black", capsize=5)
+        for b, v in zip(barres, vals):
+            ax.text(b.get_x() + b.get_width() / 2, v + 2, f"{v:.1f}".replace(".", ","),
+                    ha="center", fontsize=11)
+    ax.set_xticks(range(len(champs)))
+    ax.set_xticklabels(champs, fontsize=12)
+    ax.set_ylabel("lignes lues exactement (%)")
+    ax.set_ylim(0, 100)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.legend(frameon=False, loc="upper left", ncol=3)
+    plt.tight_layout()
+    plt.show()
 ```
 
 Avec le bloc entier, gemma4 lit correctement `{python} pct(bloc_tous)` des noms et prénoms. C'est nettement mieux que les autres approches (McNemar, p < 0,001).
@@ -171,20 +191,17 @@ le modèle, mais il est aussi possible que la découpe des lignes soit trop serr
 encore vérifié.
 :::
 
-## Ajustement un petit modèle sur nos données
+## Ajustement d'un petit modèle sur nos données
 
 J'ai ensuite pris TrOCR, un modèle beaucoup plus petit, que j'ai ajusté sur nos bulletins.
 
 - Il passe de `{python} pct(trocr_avant)` à `{python} pct(trocr_tous)` de noms et prénoms justes (intervalle : `{python} ic_tous`).
-- Sur une ligne isolée, il fait  égal à peu près avec gemma4, et il tourne en interne.
-
+- Sur une ligne isolée, il fait à peu près jeu égal avec gemma4, et il tourne en interne.
 
 ::: notes
 La première mesure portait sur 42 lignes seulement, celle-ci sur 335 avec une validation
 croisée : le chiffre est beaucoup plus solide.
 :::
-
-
 
 ## Les erreurs qui comptent vraiment
 
@@ -192,15 +209,17 @@ croisée : le chiffre est beaucoup plus solide.
 #| output: asis
 if bascule is not None:
     b = bascule.set_index("champ")
-    print("| | NOM | PRÉNOM | Ensemble |")
+    print("\n| | NOM | PRÉNOM | Ensemble |")
     print("|---|---|---|---|")
     for col, lib in [("gemma4_exact_%", "Lu correctement"),
                      ("gemma4_avoue_%", "Répond « illisible »"),
                      ("gemma4_invente_%", "Se trompe sans le signaler")]:
-        print(f"| {lib} | " + " | ".join(pct(b.loc[c, col]) for c in ["NOM", "PRENOM", "TOUS"]) + " |")
-
+        if col in b.columns:
+            print(f"| {lib} | " + " | ".join(pct(b.loc[c, col]) if c in b.index else "—"
+                                             for c in ["NOM", "PRENOM", "TOUS"]) + " |")
+    print()
 else:
-    print("*Tableau à compléter.*")
+    print("\n*Tableau à compléter.*\n")
 ```
 
 ::: notes
@@ -214,16 +233,17 @@ invente, rien ne le signale. C'est pour moi le chiffre le plus important du proj
 #| output: asis
 if phase1 is not None:
     t = phase1[phase1.champ == "TOUS"].copy()
-    t["cer"] = t["CER_%"].astype(float)
-    print("| Modèle | Noms et prénoms justes | Intervalle à 95 % | Caractères à corriger |")
+    t["cer_num"] = pd.to_numeric(t["CER_%"], errors="coerce")
+    print("\n| Modèle | Noms et prénoms justes | Intervalle à 95 % | Caractères à corriger |")
     print("|---|---|---|---|")
-    for r in t.sort_values("cer").itertuples():
-        print(f"| {r.modele} | {r._4.replace('.', ',')} % | {r.IC95.replace('.', ',')} | "
-              f"{r._6.replace('.', ',')} % |")
-    print("\nTous les modèles ont lu les mêmes 335 lignes. Sans entraînement sur nos données, "
-          "aucun ne s'en sort vraiment.")
+    for _, r in t.sort_values("cer_num").iterrows():
+        print(f"| {r['modele']} | {virgule(r['exact_%'])} % | {virgule(r['IC95'])} | "
+              f"{virgule(r['CER_%'])} % |")
+    n_lignes = t["N"].iloc[0] if "N" in t.columns and len(t) else "les"
+    print(f"\nTous les modèles ont lu les mêmes {n_lignes} lignes. Sans entraînement sur nos données, "
+          "aucun ne s'en sort vraiment.\n")
 else:
-    print("*Résultats à venir.*")
+    print("\n*Résultats à venir (fichier `banc_phase1.csv` absent).*\n")
 ```
 
 ::: notes
@@ -235,31 +255,38 @@ Le seul qui s'en approche est le TrOCR français, entraîné en partie sur des d
 
 ```{python}
 #| output: asis
+from scipy.stats import binomtest
+
 colonnes = {"trocr_base_ajuste": "TrOCR-base ajusté",
             "trocr-large-fr_ajuste": "TrOCR-large français ajusté",
             "pylaia-popp_ajuste": "PyLaia POPP ajusté",
             "gemma4_bloc": "gemma4 sur le bloc (pour comparaison)"}
-if cas is not None and all(c in cas.columns for c in colonnes):
-    b1 = cas[cas.bloc == "1"]
-    print("| Modèle | Noms et prénoms justes |")
-    print("|---|---|")
-    for c, lib in colonnes.items():
-        print(f"| {lib} | {pct((b1[c] == b1.attendu).mean() * 100)} |")
-    from scipy.stats import binomtest
-    a, b = b1["trocr-large-fr_ajuste"] == b1.attendu, b1["trocr_base_ajuste"] == b1.attendu
-    n10, n01 = int((a & ~b).sum()), int((~a & b).sum())
-    p = binomtest(n10, n10 + n01).pvalue if n10 + n01 else 1.0
-    p_txt = f"{p:.2f}".replace(".", ",")
-    if p >= 0.05:
-        print(f"\nSur ces {len(b1)} lignes, la différence entre les deux TrOCR n'est pas "
-              f"significative (test de McNemar, p = {p_txt}). Je garde donc le plus petit, "
-              f"TrOCR-base : il est plus rapide et plus simple à faire tourner.")
-    else:
-        gagnant = "TrOCR-large français" if n10 > n01 else "TrOCR-base"
-        print(f"\nSur ces {len(b1)} lignes, l'écart entre les deux TrOCR est significatif "
-              f"(test de McNemar, p = {p_txt}), en faveur de {gagnant}.")
+if cas is None:
+    print("\n*Comparaison à venir (fichier `banc_cas_par_ligne.csv` absent).*\n")
 else:
-    print("*Comparaison à venir.*")
+    manquantes = [c for c in colonnes if c not in cas.columns]
+    b1 = cas[pd.to_numeric(cas.bloc, errors="coerce") == 1]
+    if manquantes:
+        print(f"\n*Comparaison incomplète : colonnes absentes ({', '.join(manquantes)}).*\n")
+    elif not len(b1):
+        print("\n*Aucune ligne du bloc 1 dans `banc_cas_par_ligne.csv`.*\n")
+    else:
+        print("\n| Modèle | Noms et prénoms justes |")
+        print("|---|---|")
+        for c, lib in colonnes.items():
+            print(f"| {lib} | {pct((b1[c] == b1.attendu).mean() * 100)} |")
+        a, b = b1["trocr-large-fr_ajuste"] == b1.attendu, b1["trocr_base_ajuste"] == b1.attendu
+        n10, n01 = int((a & ~b).sum()), int((~a & b).sum())
+        p = binomtest(n10, n10 + n01).pvalue if n10 + n01 else 1.0
+        p_txt = f"{p:.2f}".replace(".", ",")
+        if p >= 0.05:
+            print(f"\nSur ces {len(b1)} lignes, la différence entre les deux TrOCR n'est pas "
+                  f"significative (test de McNemar, p = {p_txt}). Je garde donc le plus petit, "
+                  f"TrOCR-base : il est plus rapide et plus simple à faire tourner.\n")
+        else:
+            gagnant = "TrOCR-large français" if n10 > n01 else "TrOCR-base"
+            print(f"\nSur ces {len(b1)} lignes, l'écart entre les deux TrOCR est significatif "
+                  f"(test de McNemar, p = {p_txt}), en faveur de {gagnant}.\n")
 ```
 
 ::: notes
@@ -272,21 +299,23 @@ le modèle de base. PyLaia progresse (POPP passe de 0 à 24 %), mais reste loin 
 ```{python}
 #| output: asis
 if courbe is not None:
-    print("| Lignes d'entraînement (RG25) | Justes sur RG26 | Intervalle à 95 % | Caractères à corriger |")
+    col_exact = next((c for c in courbe.columns if c.startswith("exact")), None)
+    col_cer = next((c for c in courbe.columns if c.startswith("CER")), None)
+    print("\n| Lignes d'entraînement (RG25) | Justes sur RG26 | Intervalle à 95 % | Caractères à corriger |")
     print("|---|---|---|---|")
-    for r in courbe.itertuples():
-        print(f"| {r.lignes_entrainement} | {r._3.replace('.', ',')} % | "
-              f"{r.IC95.replace('.', ',')} | {r._7.replace('.', ',')} % |")
+    for _, r in courbe.iterrows():
+        print(f"| {r.get('lignes_entrainement', '—')} | {virgule(r[col_exact]) if col_exact else '—'} % | "
+              f"{virgule(r.get('IC95', '—'))} | {virgule(r[col_cer]) if col_cer else '—'} % |")
     image = BANC_RES / "rg26_courbe_volume.png"
     if image.exists():
         print(f"\n![]({image})")
     print("\nLes lignes de RG26 n'ont jamais servi à l'entraînement : c'est donc un vrai test "
-          "sur une campagne que le modèle ne connaît pas.")
+          "sur une campagne que le modèle ne connaît pas.\n")
 else:
-    print("Deux questions que je teste en ce moment :\n\n"
+    print("\nDeux questions que je teste en ce moment :\n\n"
           "- un modèle entraîné sur RG25 lit-il aussi bien RG26 ?\n"
           "- avec plus de lignes annotées, est-ce qu'il progresse encore ?\n\n"
-          "*Résultats à venir.*")
+          "*Résultats à venir.*\n")
 ```
 
 ::: notes
@@ -298,33 +327,33 @@ Le point à 100 % est à comparer aux 60 % obtenus sur RG25. Si la courbe monte 
 
 ```{python}
 #| output: asis
-tg = lire_banc("teleocr_vs_multimodaux.csv")
 if tg is None:
-    print("TeleOCR est un modèle multimodal, comme gemma4, mais beaucoup plus petit et "
+    print("\nTeleOCR est un modèle multimodal, comme gemma4, mais beaucoup plus petit et "
           "spécialisé dans les documents. Il peut tourner chez nous. Je le compare aux "
           "modèles multimodaux du service (gemma4, qwen3-vl, chandra-ocr) sur les mêmes "
-          "bulletins et les mêmes images.\n\n*Résultats à venir.*")
+          "bulletins et les mêmes images.\n\n*Résultats à venir.*\n")
 else:
     noms_m = {"teleocr": "TeleOCR (chez nous)", "gemma4-26b-moe": "gemma4",
               "qwen3-vl": "qwen3-vl", "chandra-ocr-2": "chandra-ocr"}
     entrees_t = [e for e in ["ligne", "bloc", "page"] if e in set(tg.entree)]
     titres = {"ligne": "Sur la ligne", "bloc": "Sur le bloc", "page": "Sur la page"}
-    print("| Modèle | " + " | ".join(titres[e] for e in entrees_t) + " | Erreurs non signalées (bloc) |")
+    print("\n| Modèle | " + " | ".join(titres[e] for e in entrees_t) + " | Erreurs non signalées (bloc) |")
     print("|---" * (len(entrees_t) + 2) + "|")
     for m in tg.modele.unique():
         sel = tg[tg.modele == m].set_index("entree")
-        cases = [pct(float(sel.loc[e, "exact_%"])) if e in sel.index else "" for e in entrees_t]
-        sil = pct(float(sel.loc["bloc", "silencieux_%"])) if "bloc" in sel.index else ""
+        cases = [pct(sel.loc[e, "exact_%"]) if e in sel.index else "" for e in entrees_t]
+        sil = pct(sel.loc["bloc", "silencieux_%"]) if "bloc" in sel.index and "silencieux_%" in sel.columns else ""
         print(f"| {noms_m.get(m, m)} | " + " | ".join(cases) + f" | {sil} |")
-    b = tg[(tg.entree == "bloc") & (tg.modele != "teleocr")]
-    if len(b):
-        meilleur = b.sort_values("exact_%", ascending=False).iloc[0]
+    b = tg[(tg.entree == "bloc") & (tg.modele != "teleocr")].copy()
+    if len(b) and "McNemar_p_vs_teleocr" in b.columns:
+        b["exact_num"] = pd.to_numeric(b["exact_%"], errors="coerce")
+        meilleur = b.sort_values("exact_num", ascending=False).iloc[0]
         p_b = float(meilleur["McNemar_p_vs_teleocr"])
-        verdict = ("l'écart est significatif" if p_b < 0.05 else "l'écart n'est pas significatif")
+        verdict = "l'écart est significatif" if p_b < 0.05 else "l'écart n'est pas significatif"
         print(f"\nSur le bloc, entre TeleOCR et le meilleur modèle du service "
               f"({noms_m.get(meilleur['modele'], meilleur['modele'])}), {verdict} "
-              f"(test de McNemar, p = {str(round(p_b, 2)).replace('.', ',')}). "
-              f"Tous les modèles ont lu les mêmes images, avec les mêmes consignes.")
+              f"(test de McNemar, p = {virgule(round(p_b, 2))}). "
+              f"Tous les modèles ont lu les mêmes images, avec les mêmes consignes.\n")
 ```
 
 ::: notes
@@ -333,7 +362,7 @@ L'intérêt de TeleOCR, c'est qu'il tourne chez nous et qu'il est petit. Sa limi
 sait pas, et il exécute du code fourni par son dépôt (à faire valider).
 :::
 
-## Trouver les zones : quelle méthode ?
+## Trouver les zones : quelle méthode ? {.smaller}
 
 ```{python}
 #| output: asis
@@ -344,82 +373,113 @@ if f_det.exists():
         det_r = pd.read_csv(f_det)
     except Exception:
         det_r = None
-noms_det = {"gabarit": "Positions fixes", "encre_bloc": "Encre dans le bloc",
+noms_det = {"gabarit": "Positions fixes", "recalage": "Positions recalées sur un bulletin modèle",
+            "recalage_encre": "Positions recalées + encre", "encre_bloc": "Encre dans le bloc",
             "encre_gabarit": "Encre + positions fixes", "teleocr": "TeleOCR",
             "teleocr_encre": "TeleOCR + encre", "paddle": "PaddleOCR",
             "paddle_encre": "PaddleOCR + encre"}
 if det_r is None or not len(det_r):
-    print("Pour savoir quelle méthode garder, je compare plusieurs façons de trouver le nom et "
-          "le prénom sur la page : nos positions fixes, la recherche de l'encre, et deux modèles "
-          "(TeleOCR, PaddleOCR). Chaque zone trouvée est lue par le même lecteur, et je refais "
-          "le test sur des pages légèrement de travers.\n\n*Résultats à venir.*")
+    print("\nPour savoir quelle méthode garder, je compare plusieurs façons de trouver le nom et "
+          "le prénom sur la page : nos positions fixes, la recherche de l'encre, le recalage sur "
+          "un bulletin modèle et deux modèles (TeleOCR, PaddleOCR). Chaque zone trouvée est lue "
+          "par le même lecteur, et je refais le test sur des pages légèrement de travers.\n\n"
+          "*Résultats à venir.*\n")
 else:
     a_travers = "lecture_travers_%" in det_r.columns
-    entete = "| Méthode | Noms et prénoms justes | Page de travers | Secondes par page |" if a_travers \
-        else "| Méthode | Noms et prénoms justes | Secondes par page |"
-    print(entete)
+    print("\n| Méthode | Noms et prénoms justes | Page de travers | Secondes par page |" if a_travers
+          else "\n| Méthode | Noms et prénoms justes | Secondes par page |")
     print("|---|---|---|---|" if a_travers else "|---|---|---|")
     for _, r in det_r.iterrows():
-        cols = [noms_det.get(r["methode"], r["methode"]), pct(float(r["lecture_%"]))]
+        cols = [noms_det.get(r["methode"], r["methode"]), pct(r["lecture_%"])]
         if a_travers:
-            cols.append(pct(float(r["lecture_travers_%"])))
-        cols.append(f"{float(r['s_par_page']):.1f}".replace(".", ","))
+            cols.append(pct(r["lecture_travers_%"]))
+        cols.append(virgule(f"{float(r['s_par_page']):.1f}") if pd.notna(r.get("s_par_page")) else "—")
         print("| " + " | ".join(cols) + " |")
     print("\nToutes les zones sont lues par le même lecteur : la différence vient uniquement "
-          "de la façon de trouver la zone.")
+          "de la façon de trouver la zone.\n")
 ```
- 
+
 ::: notes
 La colonne « page de travers » est la plus parlante : c'est ce qui arrive quand le scan est
 décalé ou quand le formulaire bouge un peu. Une méthode qui tient là demande moins d'entretien.
 :::
+## Les listes de noms de l'Insee peuvent-elles aider ? {.smaller}
 
-## Discusion et choix
+```{python}
+#| output: asis
+syn = charger("dico-noms", "listes_insee_synthese.csv")
+if syn is None:
+    syn = lire_banc("listes_insee_synthese.csv")
+    if syn is not None:
+        SOURCES["dico-noms"] = "fichier local listes_insee_synthese.csv, NON tracé dans MLflow"
+if syn is None:
+    print("\n*Résultats à venir.*\n")
+else:
+    for c in ["exact_%", "silencieuses_%", "lignes_a_relire_%"]:
+        syn[c] = pd.to_numeric(syn[c], errors="coerce")
+    print("\n| Usage des listes | Noms et prénoms justes | Intervalle à 95 % | Erreurs non signalées | Lignes à relire |")
+    print("|---|---|---|---|---|")
+    for _, r in syn.iterrows():
+        print(f"| {r['usage']} | {pct(r['exact_%'])} | {virgule(r['IC95'])} | "
+              f"{pct(r['silencieuses_%'])} | {pct(r['lignes_a_relire_%'])} |")
+
+    ref = syn[syn.usage.str.contains("reference", case=False)].iloc[0]
+    sig = syn[syn.usage.str.startswith("1.")]
+    meilleur = syn.loc[syn["exact_%"].idxmax()]
+    print()
+   
+```
+
+::: notes
+Le résultat le plus utile est le signal : sans rien modifier, les listes divisent par deux les
+erreurs qui passeraient inaperçues, en désignant environ une ligne sur sept à relire.
+La consigne avec candidats gagne quelques points, mais les intervalles se chevauchent :
+à confirmer sur plus de bulletins avant d'en faire une règle.
+Corriger automatiquement vers le nom le plus fréquent est une mauvaise idée : on remplace
+des noms rares mais justes par des noms courants.
+:::
+
+## Discussion et choix
 
 | | gemma4 via le service | Modèle entraîné chez nous |
 |---|---|---|
 | Un modèle à stocker et à versionner | non | oui (1,4 Go) |
 | Un entraînement à refaire | non | oui |
 
-
-Pour le moment TrOCR-base ajusté sur nos données (autour de 60 %).
+Pour le moment : TrOCR-base ajusté sur nos données (autour de 60 %).
 
 ::: notes
-la solution la plus simple à faire
-vivre est en même temps celle qui marche le mieux.
+La solution la plus simple à faire vivre est en même temps celle qui marche le mieux.
 :::
 
 ## Ce qu'il me reste à vérifier
 
-1. Que ça tient sur une autre campagne .
+1. Que ça tient sur une autre campagne.
 2. Comment mettre les règles de saisie dans un fichier que le métier peut modifier lui-même.
-3.Comment gerer les positions en cas d'une grosse évolution
+3. Comment gérer les positions en cas d'une grosse évolution du formulaire.
 
 ## La suite
 
-
-
-## D'où viennent les chiffres
+## D'où viennent les chiffres {.smaller}
 
 ```{python}
 #| output: asis
 libelles = {"cv-trocr": "TrOCR, validation croisée",
             "complementarite": "gemma4 et TrOCR ensemble",
-            "bascule-illisible": "Règle « illisible »"}
-SOURCES["banc"] = ("fichiers du banc, ~/work/banc-htr/resultats"
-                   if phase1 is not None else "absent")
-print("| Résultat | Où le retrouver |")
+            "bascule-illisible": "Règle « illisible »",
+            "banc": "Comparaison des modèles",
+            "teleocr": "TeleOCR",
+            "detection": "Méthodes de détection des zones"}
+SOURCES["banc"] = "fichiers du banc, ~/work/banc-htr/resultats" if phase1 is not None else "absent"
+SOURCES["teleocr"] = "fichiers du banc, ~/work/banc-htr/resultats" if tg is not None else "absent"
+SOURCES["detection"] = ("fichiers du banc, ~/work/banc-htr/detection"
+                        if (Path.home() / "work" / "banc-htr" / "detection" / "detection_resume.csv").exists()
+                        else "absent")
+print("\n| Résultat | Où le retrouver |")
 print("|---|---|")
-libelles["banc"] = "Comparaison des modèles"
-SOURCES["teleocr"] = ("fichiers du banc, ~/work/banc-htr/resultats"
-                      if lire_banc("teleocr_vs_multimodaux.csv") is not None else "absent")
-libelles["teleocr"] = "TeleOCR"
 for etude, lib in libelles.items():
     print(f"| {lib} | {SOURCES.get(etude, 'absent')} |")
+print()
 ```
 
 Tous les essais sont enregistrés (paramètres, version du code), ce qui permet de les refaire à l'identique.
-
-::: notes
-
-:::
