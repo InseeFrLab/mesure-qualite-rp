@@ -101,11 +101,10 @@ co_echec_txt = f"{co_echec:.2f}".replace(".", ",")
 
 ## Ce que je cherche à faire
 
-L'idée est de produire le Fiqual sans seconde saisie humaine, pour la campagne de février.
+L'idée est de produire le Fiqual de façon automatique.
 
 Je ne vise pas zéro erreur. L'objectif est de faire au moins aussi bien que la saisie actuelle du PMQ.
 
-Le point délicat, c'est qu'il n'y aura plus personne pour relire. Une erreur que le modèle ne signale pas passera donc directement dans le fichier.
 
 ::: notes
 Bien insister : on ne cherche pas la perfection, on veut faire au moins aussi bien que le PMQ.
@@ -120,10 +119,9 @@ Pour que les chiffres tiennent la route :
 
 - j'ai découpé les données par bulletin, pour qu'une même écriture ne serve jamais à la fois à l'entraînement et au test ;
 - chaque résultat est donné avec son intervalle de confiance ;
-- quand je compare deux modèles, je le fais sur les mêmes lignes, avec un test apparié (McNemar).
+- quand je compare deux modèles, je le fais sur les mêmes lignes, avec un test apparié.
 
 ::: notes
-Si on mélange les lignes d'un même bulletin entre entraînement et test, le modèle a déjà vu
 l'écriture de la personne et le résultat est trop optimiste. D'où le découpage par bulletin.
 :::
 
@@ -173,43 +171,20 @@ le modèle, mais il est aussi possible que la découpe des lignes soit trop serr
 encore vérifié.
 :::
 
-## Entraîner un petit modèle sur nos données
+## Ajustement un petit modèle sur nos données
 
-J'ai ensuite pris TrOCR, un modèle beaucoup plus petit, que j'ai entraîné sur nos bulletins.
+J'ai ensuite pris TrOCR, un modèle beaucoup plus petit, que j'ai ajusté sur nos bulletins.
 
 - Il passe de `{python} pct(trocr_avant)` à `{python} pct(trocr_tous)` de noms et prénoms justes (intervalle : `{python} ic_tous`).
-- Sur une ligne isolée, il fait jeu égal avec gemma4, et il tourne chez nous.
-- Il reste quand même une vingtaine de points derrière gemma4 sur le bloc.
+- Sur une ligne isolée, il fait  égal à peu près avec gemma4, et il tourne en interne.
 
-Je le garde comme solution de repli si le service de gemma4 n'est pas autorisé pour ces données.
 
 ::: notes
 La première mesure portait sur 42 lignes seulement, celle-ci sur 335 avec une validation
 croisée : le chiffre est beaucoup plus solide.
 :::
 
-## Est-ce qu'on gagne à combiner les deux ?
 
-Assez peu. Quand gemma4 se trompe, TrOCR se trompe souvent sur la même ligne.
-
-- TrOCR ne rattrape que `{python} trocr_seul` lignes sur `{python} n_tous`.
-- Même en choisissant parfaitement, ligne par ligne, le meilleur des deux, on gagnerait environ `{python} pct(marge_tous)`.
-
-```{python}
-#| output: asis
-if bascule is not None:
-    b = bascule.set_index("champ").loc["TOUS"]
-    print(f"- J'ai aussi testé une règle simple : passer à TrOCR quand gemma4 répond "
-          f"« ILLISIBLE ». Résultat : {int(b['trocr_juste_quand_avoue'])} ligne(s) rattrapée(s), "
-          f"parce que gemma4 ne dit presque jamais qu'il ne sait pas.")
-else:
-    print("- La règle « passer à TrOCR quand gemma4 répond ILLISIBLE » est en cours de test.")
-```
-
-::: notes
-Pour quelques points au mieux, il faudrait entretenir un deuxième modèle. Je ne pense pas que
-ça vaille le coup pour la production.
-:::
 
 ## Les erreurs qui comptent vraiment
 
@@ -223,9 +198,7 @@ if bascule is not None:
                      ("gemma4_avoue_%", "Répond « illisible »"),
                      ("gemma4_invente_%", "Se trompe sans le signaler")]:
         print(f"| {lib} | " + " | ".join(pct(b.loc[c, col]) for c in ["NOM", "PRENOM", "TOUS"]) + " |")
-    print("\nC'est la dernière ligne qui m'inquiète le plus : ces erreurs passeraient en "
-          "production sans que personne ne s'en rende compte. Il faut maintenant la comparer au "
-          "taux d'erreur du PMQ, que j'ai demandé au SeRN.")
+
 else:
     print("*Tableau à compléter.*")
 ```
@@ -395,50 +368,36 @@ else:
     print("\nToutes les zones sont lues par le même lecteur : la différence vient uniquement "
           "de la façon de trouver la zone.")
 ```
-
+ 
 ::: notes
 La colonne « page de travers » est la plus parlante : c'est ce qui arrive quand le scan est
 décalé ou quand le formulaire bouge un peu. Une méthode qui tient là demande moins d'entretien.
 :::
 
-## Ce que je propose
-
-Utiliser gemma4 sur le bloc, via le service, sans entraînement spécifique.
+## Discusion et choix
 
 | | gemma4 via le service | Modèle entraîné chez nous |
 |---|---|---|
 | Un modèle à stocker et à versionner | non | oui (1,4 Go) |
 | Un entraînement à refaire | non | oui |
-| À reprendre si le formulaire change | non | probablement |
-| Gain par rapport à gemma4 sur le bloc | sans objet | aucun |
 
-En solution de repli, si le service n'est pas autorisé : TrOCR-base entraîné sur nos données (autour de 60 %).
+
+Pour le moment TrOCR-base ajusté sur nos données (autour de 60 %).
 
 ::: notes
-C'est aussi la réponse à la question de la maintenance : la solution la plus simple à faire
+la solution la plus simple à faire
 vivre est en même temps celle qui marche le mieux.
 :::
 
 ## Ce qu'il me reste à vérifier
 
-1. Que ça tient sur une autre campagne (RG26).
-2. Que les erreurs non signalées restent sous le taux d'erreur du PMQ (j'attends les chiffres du SeRN).
-3. Comment repérer automatiquement une dégradation, puisqu'il n'y aura plus personne pour relire. Par exemple : le taux de réponses « illisible », la longueur des noms lus, l'accord entre deux modèles. J'ai aussi remarqué que le service peut varier d'environ 2 points entre deux passages identiques.
-4. Comment mettre les règles de saisie dans un fichier que le métier peut modifier lui-même.
-5. L'outre-mer, où les bulletins ne sont pas les mêmes.
+1. Que ça tient sur une autre campagne .
+2. Comment mettre les règles de saisie dans un fichier que le métier peut modifier lui-même.
+3.Comment gerer les positions en cas d'une grosse évolution
 
 ## La suite
 
-| Quand | Quoi |
-|---|---|
-| Fin octobre | Test sur RG26, règles dans un fichier de configuration |
-| Novembre | Comparaison avec le PMQ, suivi des dégradations |
-| Décembre | Outre-mer, chaîne complète sur un échantillon |
-| Février | Production du Fiqual |
 
-::: notes
-Ces dates sont indicatives, je les ajusterai après le point.
-:::
 
 ## D'où viennent les chiffres
 
@@ -462,6 +421,5 @@ for etude, lib in libelles.items():
 Tous les essais sont enregistrés (paramètres, version du code), ce qui permet de les refaire à l'identique.
 
 ::: notes
-Si une ligne indique « fichier local », c'est que l'essai n'a pas été enregistré : à reprendre
-avant la réunion.
+
 :::
