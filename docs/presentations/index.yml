@@ -1,0 +1,5 @@
+- title: "Point de suivi 12/10/2026"
+  description: "Résultats depuis le 28 septembre : le pipeline envisagé, la lecture du manuscrit, TeleOCR, la détection des zones et les listes de noms de l'Insee."
+  date: "2026-10-12"
+  categories: ["manuscrit", "pipeline"]
+  path: presentations/_output/2026-10-14_point_etape_insee.html

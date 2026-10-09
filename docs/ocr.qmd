@@ -1,0 +1,159 @@
+---
+title: "OCR et écriture manuscrite"
+subtitle: "Lire le nom et le prénom du bulletin individuel"
+---
+
+Le nom et le prénom écrits à la main sont le champ le plus difficile à lire, et le premier étudié. Cette page suit les essais dans l'ordre où ils ont répondu aux questions de l'étude. Tous les chiffres portent sur la campagne RG25, et les modèles sont comparés sur **les mêmes lignes** ; la page [Évaluation](evaluation.qmd) explique les mesures (« justes », « caractères à corriger », intervalles).
+
+## Donner le bloc entier, pas la ligne seule
+
+Un même modèle multimodal est interrogé de deux façons : sur la **ligne** d'écriture isolée, ou sur le **bloc** du bulletin qui contient le nom, le prénom et leurs libellés imprimés.
+
+::: {.chiffres}
+
+| Modèle | Nom, ligne | Nom, bloc | Prénom, ligne | Prénom, bloc |
+|---|---|---|---|---|
+| gemma4 | 58,6 % | 82,2 % | 68,0 % | 88,2 % |
+| qwen3-vl | 42,6 % | 74,6 % | 65,7 % | 81,7 % |
+| chandra-ocr | 36,7 % | 66,3 % | 56,8 % | 79,9 % |
+
+:::
+
+::: {.source}
+Source : essais « bi-gemma4-26b-moe » (ligne) et « bi-bloc-gemma4-26b-moe-N169 » (bloc), et leurs équivalents pour qwen3-vl et chandra-ocr-2, du 25/09/2026 (non retenus), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}). 169 bulletins, part de lectures exactes.
+:::
+
+Les trois modèles gagnent beaucoup à voir le bloc entier : de l'ordre de **20 points** pour gemma4. Les libellés imprimés aident peut-être le modèle ; il est aussi possible que la découpe de la ligne soit trop serrée. Ce point n'est pas encore vérifié. Le bloc est en tout cas l'unité retenue pour la suite.
+
+## Les modèles d'écriture manuscrite, tels quels
+
+Des modèles spécialisés dans l'écriture manuscrite (TrOCR, PyLaia) sont beaucoup plus sobres en ressources et vu leur spécialisations sur la détection de caratcères pourraient atteindre un meilleur niveau de qualité que les gros modèles précedents. On les essaie d'abord **sans les entraîner** sur nos bulletins.
+
+::: {.chiffres}
+
+| Modèle | Justes | Intervalle à 95 % | Caractères à corriger |
+|---|---|---|---|
+| TrOCR-large français | **28,4 %** | [23,8 ; 33,4] | **33,2 %** |
+| TrOCR-base | 8,1 % | [5,6 ; 11,5] | 88,1 % |
+| PyLaia Rimes | 0,3 % | [0,1 ; 1,7] | 83,8 % |
+| PyLaia POPP | 0,0 % | [0,0 ; 1,1] | 99,2 % |
+| PyLaia Belfort | 0,0 % | [0,0 ; 1,1] | 78,8 % |
+| PyLaia Pellet | 0,0 % | [0,0 ; 1,1] | 81,1 % |
+| PyLaia Himanis | 0,0 % | [0,0 ; 1,1] | 84,8 % |
+
+:::
+
+::: {.source}
+Source : essais « trocr-base-brut », « trocr-large-fr-brut » et cinq essais « pylaia-\*-brut » du 05/10/2026 (non retenus), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}). 335 lignes, mêmes lignes pour tous les modèles.
+:::
+
+Sans entraînement, aucun ne lit correctement nos bulletins. Le seul qui s'en approche un peu est le TrOCR français, entraîné en partie sur des données de recensement. Les modèles PyLaia ne lisent presque rien.
+
+## Après entraînement sur nos données
+
+On ajuste ensuite les modèles prometteurs sur des lignes de nos bulletins, avec les lignes d'un même bulletin toujours du même côté (entraînement ou test).
+
+::: {.chiffres}
+
+| Modèle entraîné | Justes | Intervalle à 95 % | Caractères à corriger | Mesuré sur |
+|---|---|---|---|---|
+| TrOCR-base | **60,3 %** | [55,0 ; 65,4] | **12,9 %** | validation croisée, 335 lignes |
+| TrOCR-large français | 59,7 % | [47,7 ; 70,6] | 13,9 % | lignes de test, 67 lignes |
+| PyLaia POPP | 23,9 % | [15,3 ; 35,3] | 34,3 % | lignes de test, 67 lignes |
+| *Rappel : gemma4 sur le bloc, sans entraînement* | *84,2 %* | — | — | *335 lignes* |
+
+:::
+
+::: {.source}
+Sources : essai « cv-trocr-nb05 » du 05/10/2026 (retenu), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}) ; essais « trocr-large-fr-ajuste » et « pylaia-popp-ajuste » du 05/10/2026 (non retenus), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}).
+:::
+
+Un petit modèle entraîné chez nous passe de **8 % à 60 %** de noms et prénoms justes. C'est un très net progrès, mais il reste en dessous de gemma4 sur le bloc. Les trois lignes ne sont pas mesurées sur le même échantillon (validation croisée sur 335 lignes pour TrOCR-base, 67 lignes de test pour les deux autres) : les intervalles se chevauchent largement, et un test apparié sur les mêmes lignes reste à faire avant de dire que les deux TrOCR se valent.
+
+## Les deux se complètent-ils ?
+
+On croise, ligne par ligne, la lecture de gemma4 sur le bloc et celle de TrOCR ajusté. Si les deux se trompent rarement sur les mêmes lignes, un arbitrage pourrait gagner des points.
+
+::: {.chiffres}
+
+| Champ | Lignes | gemma4 (bloc) | TrOCR ajusté | Meilleur des deux (oracle) | Marge |
+|---|---|---|---|---|---|
+| NOM | 168 | 82,1 % | 58,9 % | 86,9 % | 4,8 pts |
+| PRENOM | 167 | 86,2 % | 61,7 % | 91,6 % | 5,4 pts |
+| TOUS | 335 | 84,2 % | 60,3 % | 89,3 % | 5,1 pts |
+
+:::
+
+::: {.source}
+Source : essai « complementarite-nb05 » du 05/10/2026 (retenu), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}). L'oracle choisit à chaque ligne la bonne réponse quand l'une des deux l'a : c'est un plafond, pas un résultat atteignable.
+:::
+
+Le plafond est modeste (environ **5 points** de plus que gemma4 seul), et les deux modèles se trompent souvent sur les mêmes lignes. Un arbitrage automatique, par exemple basculer sur TrOCR quand gemma4 répond « illisible », ne gagne aucune ligne.
+
+## Les erreurs qui comptent
+
+Une erreur qui se voit se traite : le modèle répond « illisible », et on envoie la ligne à une relecture. Une erreur **sans signal** passe dans le fichier. Pour gemma4 sur le bloc :
+
+<div class="stats">
+<div class="stat"><div class="n">84,2 %</div><div class="l">Lu correctement</div><div class="d">nom 82,1 % · prénom 86,2 %</div></div>
+<div class="stat"><div class="n">0,9 %</div><div class="l">Répond « illisible »</div><div class="d">nom 0,0 % · prénom 1,8 %</div></div>
+<div class="stat alerte"><div class="n">14,9 %</div><div class="l">Se trompe sans le signaler</div><div class="d">nom 17,9 % · prénom 12,0 %</div></div>
+</div>
+
+::: {.source}
+Source : essai « bascule-illisible-nb05 » du 05/10/2026 (retenu), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}).
+:::
+
+C'est, pour ce projet, le chiffre qui compte le plus : le modèle avoue très rarement qu'il ne sait pas. Un signal de doute fiable est donc nécessaire, quel que soit le modèle retenu.
+
+## TeleOCR face aux autres modèles multimodaux
+
+TeleOCR est un modèle multimodal plus petit, spécialisé dans les documents, qui peut tourner chez nous. On le compare à ceux du service interne sur les mêmes images.
+
+::: {.chiffres}
+
+| Modèle | Sur la ligne | Sur le bloc | Erreurs non signalées (bloc) |
+|---|---|---|---|
+| TeleOCR (chez nous) | 23,3 % | 38,8 % | 36,7 % |
+| gemma4 | **63,3 %** | **84,8 %** | **14,6 %** |
+| qwen3-vl | 54,3 % | 78,2 % | 21,8 % |
+| chandra-ocr | 46,3 % | 72,8 % | 21,2 % |
+
+:::
+
+::: {.source}
+Source : essai « teleocr-vs-multimodaux » du 07/10/2026 (non retenu), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}). 335 lignes. Écarts avec TeleOCR significatifs (test de McNemar, p < 0,001).
+:::
+
+TeleOCR lit nettement moins bien le manuscrit que les modèles du service. Il a été entraîné sur des documents imprimés, ne dit jamais qu'il ne sait pas, et il exécute du code fourni par son dépôt, ce qui demande une validation de sécurité avant tout usage.
+
+## Les listes de noms de l'Insee
+
+Peut-on s'aider des listes de noms et de prénoms de l'Insee ? On essaie quatre usages après la lecture de gemma4 : un **signal** (relire les noms absents de la liste), deux **corrections** automatiques, et une **consigne** qui donne des candidats au modèle.
+
+::: {.chiffres}
+
+| Usage des listes | Justes | Intervalle à 95 % | Erreurs non signalées | Lignes à relire |
+|---|---|---|---|---|
+| gemma4 seul (reference) | 83,9 % | [79,6 ; 87,4] | 15,2 % | 0,0 % |
+| 1. signal (relecture des absents) | 83,9 % | [79,6 ; 87,4] | 7,8 % | 14,0 % |
+| 2a. correction, candidat unique | 83,9 % | [79,6 ; 87,4] | 15,2 % | 0,0 % |
+| 2b. correction, candidat le plus frequent | 81,8 % | [77,3 ; 85,6] | 17,3 % | 0,0 % |
+| 3. consigne avec candidats | 86,6 % | [82,5 ; 89,8] | 12,5 % | 0,0 % |
+
+:::
+
+::: {.source}
+Source : essai « listes-insee » du 08/10/2026 (non retenu), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}).
+:::
+
+- Le plus utile est le **signal** : sans rien modifier, les listes divisent par deux les erreurs qui passeraient inaperçues, en désignant environ une ligne sur sept à relire.
+- Corriger automatiquement vers le nom le plus fréquent est une mauvaise idée : on remplace des noms rares mais justes par des noms courants.
+- La consigne avec candidats gagne quelques points, mais les intervalles se chevauchent : à confirmer sur plus de bulletins avant d'en faire une règle.
+
+## Ce qui reste à faire
+
+- Comparer, pour le texte manuscrit, les deux façons d'interroger un modèle multimodal : lui demander **la valeur**, ou lui demander **ce qu'il voit** (la transcription brute) et laisser les consignes décider.
+- Vérifier sur un modèle multimodal plus gros.
+- Refaire la mesure sur **RG26**, jamais utilisée pour l'entraînement, et voir si plus de lignes annotées font encore progresser le petit modèle.
+- Trancher entre gemma4 via le service et un petit modèle entraîné chez nous. Le second est plus simple à faire vivre (un modèle à stocker et à versionner, un entraînement à refaire) mais lit moins bien.

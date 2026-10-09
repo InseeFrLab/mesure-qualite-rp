@@ -1,0 +1,81 @@
+---
+title: "Comment on évalue"
+subtitle: "Référence, données, mesures et suivi des essais"
+---
+
+Un chiffre n'a de valeur que si on sait ce qu'il mesure, sur quoi, et avec quelle incertitude. Cette page décrit le protocole commun à toutes les études du site.
+
+## La référence
+
+La référence est le **Fiqual saisi par le prestataire (PMQ)** sur la campagne RG25. Un modèle a « juste » quand sa lecture, une fois normalisée, est identique à la saisie du PMQ.
+
+Cette référence a une limite : le PMQ peut lui-même se tromper. Le résultat mesure donc l'écart avec la saisie actuelle, pas l'écart avec la vérité. Comparer à la vérité demande une relecture d'un échantillon, qui reste à faire.
+
+Le Ficod n'est jamais utilisé comme référence en production. Pendant les études, il sert de source d'exemples annotés.
+
+## Les données
+
+| | |
+|---|---|
+| Campagne de mesure | RG25 |
+| Bulletins étudiés | 169 |
+| Lignes (un nom, un prénom) | 335 |
+| Campagne de vérification | RG26, pas encore mesurée |
+
+### Le découpage par bulletin
+
+Les lignes d'un même bulletin sont toujours du même côté de la séparation entre entraînement et test. Sinon le modèle reconnaîtrait l'écriture d'une personne vue à l'entraînement et le résultat serait trop optimiste.
+
+L'entraînement des petits modèles est évalué par **validation croisée en cinq blocs** de bulletins : chaque bloc sert une fois de test. Le tirage est fixé (graine 42), ce qui permet de refaire exactement les mêmes découpes.
+
+## Les mesures
+
+| Mesure | Définition |
+|---|---|
+| **Justes** (exact) | Part des lignes dont la lecture est identique à la référence, après normalisation : majuscules, sans accents, espaces simplifiés. |
+| **Caractères à corriger** (CER) | Nombre de caractères à changer pour passer de la lecture à la référence (distance d'édition), divisé par le nombre de caractères de la référence, sur l'ensemble des lignes. Il peut dépasser 100 %. |
+| **Intervalle à 95 %** | Intervalle de Wilson sur la part de lignes justes. Avec 335 lignes, il fait environ 10 points de large ; avec 67 lignes, environ 23. |
+| **Test de McNemar** | Pour comparer deux modèles **sur les mêmes lignes** : on ne compte que les lignes où l'un a juste et l'autre non. |
+| **Erreur avouée** | Le modèle répond « illisible » : on sait qu'il y a un doute et on peut traiter la ligne. |
+| **Erreur non signalée** | Le modèle répond autre chose que la référence, sans signal de doute. C'est la plus coûteuse. |
+
+On regarde toujours **les deux** : le nombre de lignes justes dit combien on gagne, la part d'erreurs non signalées dit combien on risque.
+
+## Le suivi des essais dans MLflow
+
+Chaque essai est enregistré avec ses paramètres, ses métriques et ses fichiers de résultats, ce qui permet de le refaire à l'identique. Trois règles, appliquées par le module `evaluation/suivi.py` :
+
+1. **Une seule expérience** MLflow pour les essais du projet.
+2. **Les mêmes étiquettes sur chaque essai** : l'étude, le notebook, le statut et le commit Git du code. On retrouve tout par étude, pas par nom de notebook.
+3. **Un seul essai « retenu » par étude.** C'est lui que les présentations affichent ; les autres sont « exploratoires », « remplacés » ou « abandonnés ».
+
+### D'où viennent les chiffres du site
+
+Les chiffres sont écrits dans les pages, avec sous chaque tableau l'essai d'origine. Tous les essais sont dans l'expérience [fiqual-banc-essai]({{< var mlflow_banc >}}) de l'instance MLflow du projet ; les essais sur les cases à cocher existent aussi dans l'expérience [fiqual-typl]({{< var mlflow_typl >}}). On retrouve un essai par son nom.
+
+::: {.texte}
+
+| Résultat | Essai(s) MLflow | Date | Statut |
+|---|---|---|---|
+| TrOCR ajusté, validation croisée | `cv-trocr-nb05` | 05/10/2026 | retenu |
+| gemma4 et TrOCR croisés | `complementarite-nb05` | 05/10/2026 | retenu |
+| Règle « illisible » | `bascule-illisible-nb05` | 05/10/2026 | retenu |
+| OCR sans entraînement | `trocr-base-brut`, `trocr-large-fr-brut`, `pylaia-popp-brut`, `pylaia-rimes-brut`, `pylaia-belfort-brut`, `pylaia-pellet-brut`, `pylaia-himanis-brut` | 05/10/2026 | non retenus |
+| OCR après entraînement | `trocr-large-fr-ajuste`, `pylaia-popp-ajuste` | 05/10/2026 | non retenus |
+| Ligne ou bloc (169 bulletins) | `bi-gemma4-26b-moe`, `bi-qwen3-vl`, `bi-chandra-ocr-2` (ligne) ; `bi-bloc-gemma4-26b-moe-N169`, `bi-bloc-qwen3-vl-N169`, `bi-bloc-chandra-ocr-2-N169` (bloc) | 25/09/2026 | non retenus |
+| TeleOCR et multimodaux | `teleocr-vs-multimodaux` | 07/10/2026 | non retenu |
+| Détection des zones | `detection-comparaison` | 08/10/2026 | non retenu |
+| Listes de noms de l'Insee | `listes-insee` | 08/10/2026 | non retenu |
+| Recalage du masque | `recalage-BI-N40` | 30/09/2026 | non retenu |
+| Cases cochées | `densite-typl-rg25`, `Qwen/Qwen3-VL-4B-Instruct` | 24/09/2026 | non retenus |
+
+:::
+
+La plupart des essais ne sont pas encore « retenus » : il reste à décider, étude par étude, lequel fait foi. Tant que ce n'est pas fait, ces chiffres sont ceux du dernier essai du nom, et la colonne « Statut » le dit. Quand un nouvel essai est retenu, il faut mettre à jour à la main les tableaux concernés.
+
+## Les limites à garder en tête
+
+- **Un échantillon petit.** 335 lignes donnent des intervalles d'environ 10 points ; certaines comparaisons reposent sur 67 lignes.
+- **Une seule campagne.** Tout est mesuré sur RG25. La tenue sur RG26 n'est pas encore connue.
+- **Une référence imparfaite.** Voir plus haut.
+- **Des modèles qui évoluent.** Un modèle du service peut changer de version : chaque essai garde le nom du modèle et le commit du code, pour pouvoir expliquer un écart.

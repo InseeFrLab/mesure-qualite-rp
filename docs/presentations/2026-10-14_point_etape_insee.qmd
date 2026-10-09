@@ -1,0 +1,260 @@
+---
+title: "PMQ par IA"
+subtitle: "point de suivi 12/10/2026"
+author: ""
+date: "2026-10-12"
+lang: fr
+format:
+  insee-clair-revealjs:
+    css: point_etape_insee.css
+    footer: ""
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+# Où en est-on ?
+
+## Rappel de l'objectif
+
+::: {.callout-important}
+
+produire le Fiqual de façon automatique, et de faire **au moins aussi bien que la saisie actuelle du PMQ** (en terme de taux d'erreurs)
+
+Variables prioritaires ➡️ Variables d'identités pour les appariements.
+
+:::
+
+## Le pipeline envisagé {#pipeline-envisage}
+
+{{< include ../_includes/pipeline.html >}}
+
+## Retour sur dernière réunion 28/09
+
+* Mise en place de l'environnement d'expérimentation
+* Tests sur le bloc `TYPL` (case à cocher) ➡️ meilleurs résultats obtenus avec modèle multimodal (*gemma*) qui *lit* l'image + application des consignes
+* Premiers essais sur le bloc nom prénom
+
+# Ce qui est nouveau depuis le 28/09
+
+## Ce qu'on montre au modèle compte beaucoup
+
+```{python}
+#| fig-align: center
+import matplotlib.pyplot as plt
+
+# Valeurs lues dans MLflow : gemma4 sur le bloc (complementarite-nb05), gemma4 sur la ligne seule
+# (bi-gemma4-26b-moe), TrOCR ajusté avec son intervalle à 95 % (cv-trocr-nb05).
+# Palette validée (validate_palette.js) : bleu, orange, vert ; contraste faible compensé par
+# des valeurs écrites sur chaque barre et une légende.
+champs = ["NOM", "PRENOM"]
+series = {"gemma4 sur le bloc": ([82.1, 86.2], "#286ac7"),
+          "gemma4 sur la ligne seule": ([58.6, 68.0], "#d98c07"),
+          "TrOCR ajusté": ([58.9, 61.7], "#1baf7a")}
+ic_trocr = [(51.4, 66.1), (54.1, 68.7)]
+encre, encre_douce, grille = "#1b2a3a", "#4a5b6d", "#dfe7f1"
+fig, ax = plt.subplots(figsize=(13, 4.8), dpi=170)
+largeur, ecart = 0.24, 0.02
+for k, (nom, (vals, couleur)) in enumerate(series.items()):
+    x = [i + (k - 1) * (largeur + ecart) for i in range(len(champs))]
+    barres = ax.bar(x, vals, largeur, label=nom, color=couleur, edgecolor="white", linewidth=2, zorder=3)
+    if nom == "TrOCR ajusté":
+        ax.errorbar(x, vals, yerr=[[v - lo for v, (lo, _) in zip(vals, ic_trocr)],
+                                   [hi - v for v, (_, hi) in zip(vals, ic_trocr)]],
+                    fmt="none", ecolor=encre_douce, capsize=5, elinewidth=1.5, zorder=4)
+    for b, v in zip(barres, vals):
+        decalage = 9 if nom == "TrOCR ajusté" else 2
+        ax.text(b.get_x() + b.get_width() / 2, v + decalage, f"{v:.1f}".replace(".", ",") + " %",
+                ha="center", va="bottom", fontsize=16, fontweight="bold", color=encre, zorder=5)
+ax.set_xticks(range(len(champs)))
+ax.set_xticklabels(["Nom", "Prénom"], fontsize=17, color=encre)
+ax.set_yticks([0, 25, 50, 75, 100])
+ax.set_yticklabels([f"{v} %" for v in (0, 25, 50, 75, 100)], fontsize=13, color=encre_douce)
+ax.set_ylim(0, 108)
+ax.yaxis.grid(True, color=grille, linewidth=1, zorder=0)
+ax.set_axisbelow(True)
+ax.tick_params(length=0)
+ax.spines[["top", "right", "left"]].set_visible(False)
+ax.spines["bottom"].set_color(grille)
+ax.set_ylabel("lignes lues exactement", fontsize=14, color=encre_douce)
+ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, 1.13), ncol=3, fontsize=15,
+          labelcolor=encre, handlelength=1.1, handleheight=1.1, columnspacing=2.2)
+plt.tight_layout()
+plt.show()
+```
+
+::: {.source}
+Source : essais « complementarite-nb05 » et « cv-trocr-nb05 » (retenus, 05/10/2026), « bi-gemma4-26b-moe » (25/09/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
+:::
+
+Avec le bloc entier, gemma4 lit correctement 84,2 % des noms et prénoms, nettement mieux que les autres approches.
+
+## Modèles de lecture manuscrite : sans entraînement
+
+| Modèle | Justes | Intervalle à 95 % | Caractères à corriger |
+|---|---|---|---|
+| TrOCR-large français | **28,4 %** | [23,8 ; 33,4] | **33,2 %** |
+| PyLaia Belfort | 0,0 % | [0,0 ; 1,1] | 78,8 % |
+| PyLaia Pellet | 0,0 % | [0,0 ; 1,1] | 81,1 % |
+| PyLaia Rimes | 0,3 % | [0,1 ; 1,7] | 83,8 % |
+| PyLaia Himanis | 0,0 % | [0,0 ; 1,1] | 84,8 % |
+| TrOCR-base | 8,1 % | [5,6 ; 11,5] | 88,1 % |
+| PyLaia POPP | 0,0 % | [0,0 ; 1,1] | 99,2 % |
+
+Les mêmes 335 lignes (noms et prénoms) pour tous les modèles, utilisés tels quels, sans les entraîner sur nos bulletins.
+
+::: {.source}
+Source : essais « trocr-base-brut », « trocr-large-fr-brut » et cinq essais « pylaia-\*-brut » (05/10/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
+:::
+
+::: notes
+Le seul qui s'approche un peu de nos lettres est le TrOCR français (entraîné en partie sur des
+données de recensement). Les modèles PyLaia ne lisent presque rien tels quels.
+:::
+
+## Les mêmes modèles, après entraînement sur nos données (finetuning)
+
+| Modèle entraîné | Justes | Intervalle à 95 % | Caractères à corriger | Mesuré sur |
+|---|---|---|---|---|
+| TrOCR-base | **60,3 %** | [55,0 ; 65,4] | **12,9 %** | validation croisée, 335 lignes |
+| TrOCR-large français | 59,7 % | [47,7 ; 70,6] | 13,9 % | lignes de test, 67 lignes |
+| PyLaia POPP | 23,9 % | [15,3 ; 35,3] | 34,3 % | lignes de test, 67 lignes |
+| *Rappel : gemma4 sur le bloc, sans entraînement* | *84,2 %* | *[79,9 ; 87,7]* | *—* | *335 lignes* |
+
+::: {.source}
+Source : essais « cv-trocr-nb05 » et « complementarite-nb05 » (retenus), « trocr-large-fr-ajuste » et « pylaia-popp-ajuste » (05/10/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
+:::
+
+TrOCR-base passe de 8,1 % à 60,3 % de noms et prénoms justes. TrOCR-large français arrive à un niveau du même ordre, PyLaia reste loin derrière ;
+
+::: {.callout-important}
+
+Le modele multimodal reste loin devant !
+
+:::
+
+## Les erreurs qui comptent : celles qu'on ne voit pas (gemma)
+
+<div class="stats">
+<div class="stat"><div class="n">84,2 %</div><div class="l">Lu correctement</div><div class="d">nom 82,1 % · prénom 86,2 %</div></div>
+<div class="stat"><div class="n">0,9 %</div><div class="l">Répond « illisible »</div><div class="d">nom 0,0 % · prénom 1,8 %</div></div>
+<div class="stat alerte"><div class="n">14,9 %</div><div class="l">Se trompe sans le signaler</div><div class="d">nom 17,9 % · prénom 12,0 %</div></div>
+</div>
+
+::: {.source}
+Source : essai « bascule-illisible-nb05 » (retenu, 05/10/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
+:::
+
+Si on prenait, pour chaque ligne, la bonne réponse entre gemma4 et TrOCR (« oracle »), on atteindrait 89,3 % contre 84,2 % pour gemma4 seul : le gain possible reste limité, et la règle « illisible » ne gagne aucune ligne.
+
+::: notes
+Quand le modèle dit « illisible », on sait qu'il y a un doute. Quand il invente, rien ne le
+signale. C'est pour moi le chiffre le plus important du projet.
+:::
+
+## TeleOCR face aux autres modèles multimodaux
+
+| Modèle | Sur la ligne | Sur le bloc | Erreurs non signalées (bloc) |
+|---|---|---|---|
+| TeleOCR (chez nous) | 23,3 % | 38,8 % | 36,7 % |
+| gemma4 | **63,3 %** | **84,8 %** | **14,6 %** |
+| qwen3-vl | 54,3 % | 78,2 % | 21,8 % |
+| chandra-ocr | 46,3 % | 72,8 % | 21,2 % |
+
+Tous les modèles ont lu les mêmes images, avec les mêmes consignes.
+
+::: {.source}
+Source : essai « teleocr-vs-multimodaux » (07/10/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
+:::
+
+## Les listes de noms de l'Insee peuvent-elles aider ?
+
+| Usage des listes | Justes | Intervalle à 95 % | Erreurs non signalées | Lignes à relire |
+|---|---|---|---|---|
+| gemma4 seul (reference) | 83,9 % | [79,6 ; 87,4] | 15,2 % | 0,0 % |
+| 1. signal (relecture des absents) | 83,9 % | [79,6 ; 87,4] | 7,8 % | 14,0 % |
+| 2a. correction, candidat unique | 83,9 % | [79,6 ; 87,4] | 15,2 % | 0,0 % |
+| 2b. correction, candidat le plus frequent | 81,8 % | [77,3 ; 85,6] | 17,3 % | 0,0 % |
+| 3. consigne avec candidats | 86,6 % | [82,5 ; 89,8] | 12,5 % | 0,0 % |
+
+::: {.source}
+Source : essai « listes-insee » (08/10/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
+:::
+
+## Les erreurs de gemma, regardées une par une
+
+:::: {.columns}
+
+::: {.column width="55%"}
+**1er passage** : gemma4 reçoit l'image et une consigne simple.
+
+::: {.consigne}
+Transcris le nom et le prénom manuscrits en majuscules, sans corriger. Si ce n'est pas lisible, mets ILLISIBLE.
+:::
+
+Il répond <span class="mot faux">ANTOME</span>
+
+**2e passage** : on vérifie cette lecture dans le fichier de l'Insee des noms et prénoms.
+
+- <span class="mot faux">ANTOME</span> n'existe pas : la ligne est **suspecte**
+- on cherche les prénoms existants à une ou deux lettres de distance : <span class="mot bon">ANTOINE</span>
+:::
+
+::: {.column width="45%"}
+<div class="stats">
+<div class="stat long"><div class="n">32 sur 38</div><div class="l">erreurs de gemma4 à une ou deux lettres de la bonne lecture</div><div class="d">parmi 59 lignes à regarder, sur 335</div></div>
+<div class="stat long"><div class="n">83,9 % → 88,1 %</div><div class="l">gemma4 seul, comparé au PMQ puis à la référence arbitrée</div><div class="d">le PMQ se trompe aussi : 1,6 % à 6,6 % de lignes</div></div>
+<div class="stat long"><div class="n">86,6 % → 90,6 %</div><div class="l">avec le 2e passage</div><div class="d">mêmes deux références</div></div>
+</div>
+:::
+
+::::
+
+{{< fa table-list >}} [Les 59 lignes, une par une : galerie HTML dans MLflow](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1/runs/59dbdaa8f5b249ba90143dca58fbae1b/artifacts) (accès sur identifiants)
+
+::: {.source}
+Source : essai « arbitrage-sern-RG25 » (09/10/2026, notebook 10), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
+:::
+
+::: notes
+Les 59 lignes sont celles où gemma4 ou le 2e passage s'écartent de la saisie humaine. Groupe A (37) : pas de
+divergence entre le PAD et le PMQ. Groupe B (5) : divergence arbitrée par le SeRN. Groupe C (17) : divergence non
+arbitrée, la vérité est inconnue. Verdicts : gemma4 se trompe sur 38 lignes, a juste sur 4, et 17 lignes n'ont pas
+de vérité.
+
+Parmi ces 38 erreurs, 22 sont à une lettre de la bonne lecture et 10 à deux lettres : c'est le cas que vise le
+2e passage. Sur les 27 lignes dont la lecture est absente du fichier de l'Insee, la relecture corrige 9 erreurs,
+laisse 2 lignes fausses et en abîme 1 qui était juste (un nom rare). Pour les autres, la galerie ne note pas de
+relecture.
+
+« Référence arbitrée » : on compare à la vérité établie par l'arbitrage du SeRN sur les divergences, au lieu de
+comparer à la seule saisie du PMQ. Les images de la galerie sont des écritures de vraies personnes : elles restent
+dans MLflow et ne sont pas reprises ici.
+:::
+
+# La suite
+
+## Prochaines étapes
+
+1. Vérifier de nouveaux modèles multimodaux (plus gros)
+2. Evaluer / sur la vérité
+3. Finetune sur plus de données (anciens bulletins sur LS3 ?)
+4. Automates :
+    - détection du masque du bulletin
+    - transformation des consignes
+
+## Point d'étape 14/10
+
+* Note de préparation à venir
+* Sujet intégration en production et maintenance
+
+# Ressources
+
+## Liens utiles
+
+::: {.liens}
+- {{< fa brands github >}} [**Dépôt GitHub**](https://github.com/InseeFrLab/mesure-qualite-rp)<br>InseeFrLab/mesure-qualite-rp : code, notebooks, présentation
+- {{< fa chart-line >}} [**MLflow du projet**](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/)<br>tous les essais : paramètres, métriques, fichiers de résultats
+- {{< fa cloud >}} [**SSP Cloud**](https://datalab.sspcloud.fr/)<br>projet projet-mesure-qualite-rp : données, services, secrets
+:::

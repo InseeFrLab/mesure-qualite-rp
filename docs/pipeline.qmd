@@ -1,0 +1,52 @@
+---
+title: "Le pipeline"
+subtitle: "De l'image du questionnaire au fichier Fiqual"
+---
+
+## Les quatre étapes
+
+::: {.schema}
+{{< include _includes/pipeline.html >}}
+:::
+
+1. **Découpage.** Le questionnaire (FL ou BI) est découpé en blocs : un bloc contient une question ou un groupe de champs, avec ses libellés imprimés.
+2. **Lecture par un modèle.** Chaque bloc est envoyé à un modèle. Quatre candidats sont comparés sur les mêmes blocs : un OCR, la détection déterministe de l'encre pour les cases à cocher, et un modèle multimodal avec deux façons de poser la question (lui demander **la valeur**, ou lui demander **ce qu'il voit**). Ce sont des alternatives : l'étude sert à retenir le meilleur.
+3. **Application des consignes.** Les règles de saisie du document de consignes transforment ce qui a été lu en valeur du Fiqual.
+4. **Constitution du Fiqual.** Les valeurs sont assemblées dans le dessin de fichier attendu.
+
+## Pourquoi séparer lecture et consignes
+
+La lecture est **apprise** : un modèle regarde une image. Les consignes sont **déterministes** : ce sont des règles écrites. Cette séparation permet de mesurer chaque source d'erreur à part, ce qu'une chaîne en un seul bloc ne permet pas.
+
+Les deux façons d'interroger un modèle multimodal déplacent justement la frontière entre ces deux parties. Si on lui demande **ce qu'il voit** (l'état de chaque case, le texte d'un bloc), ce sont les consignes qui décident de la valeur finale. Si on lui demande **la valeur**, il applique lui-même les consignes, qu'on a alors écrites dans la consigne qu'on lui donne. La page [Cases cochées](cases.qmd) compare ces deux modes sur un exemple.
+
+## Ce qui est fait, testé, à faire
+
+| Étape | Ce qui existe | État |
+|---|---|---|
+| 1. Découpage | Positions fixes, recalage sur le cadre imprimé, détection de l'encre : [Masques et découpage](masques.qmd) | <span class="etat test">testé sur BI</span> |
+| 2. Lecture, cases | Densité d'encre et modèle multimodal, sur la question « type de logement » : [Cases cochées](cases.qmd) | <span class="etat test">testé sur une question</span> |
+| 2. Lecture, manuscrit | OCR spécialisés, modèles multimodaux, entraînement : [OCR](ocr.qmd) | <span class="etat test">testé sur nom et prénom</span> |
+| 2. Lecture, deux prompts | « La valeur » contre « ce que le modèle voit » pour le texte manuscrit | <span class="etat afaire">à faire</span> |
+| 3. Consignes | La règle des cases existe dans un notebook ; elle n'est pas encore dans `src/mesure_qualite/regles` | <span class="etat afaire">à faire</span> |
+| 4. Fiqual | Lecture du dessin de fichier dans les notebooks ; `assemblage` est vide | <span class="etat afaire">à faire</span> |
+
+
+## Organisation du code
+
+```text
+src/mesure_qualite/
+    io/             lecture du bucket, manifeste des images
+    parsing/        Ficod, Fiqual, divergences, dessins de fichier
+    regles/         application du document de consignes
+    codification/   communes, pays, nationalités
+    perception/     détection des zones (detection.py), banc de lecture manuscrite (banc_htr.py)
+    assemblage/     écriture du fichier Fiqual
+    evaluation/     suivi des essais dans MLflow (suivi.py)
+configs/            paramètres par campagne et positions des zones, par millésime
+notebooks/          exploration, sans leurs sorties
+```
+
+Seuls `perception/` et `evaluation/suivi.py` contiennent du code pour l'instant. Le reste est le squelette prévu, que les notebooks alimenteront à mesure que le code se stabilise.
+
+Les positions des zones, les dessins de fichier et les modalités admises vivent dans `configs/`, jamais dans le code : le questionnaire change d'un millésime à l'autre.
