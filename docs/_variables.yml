@@ -1,0 +1,5 @@
+# Liens vers MLflow (instance du projet). Identifiants d'expérience vérifiés sur l'instance :
+# fiqual-banc-essai = 1, fiqual-typl = 59, fiqual-comparaison-equitable = 66.
+mlflow_url: https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr
+mlflow_banc: https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1
+mlflow_typl: https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/59

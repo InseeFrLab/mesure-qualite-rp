@@ -53,7 +53,22 @@ séparément mesurables, ce qu'une architecture monolithique ne permet pas.
 # Installer la librairie systéme dont OpenCV a besoin
     sudo apt update && sudo apt install -y libgl1
 
+# Site et présentations
+
+Le site (`docs/`) présente les objectifs, le pipeline, les méthodes et les résultats. Les
+diaporamas (`docs/presentations/`) sont un sous-projet Quarto séparé, dans la charte Insee.
+
+    bash scripts/installer_extensions.sh        # charte Insee + icônes (44 Mo, non versionnées)
+    quarto render docs/presentations            # d'abord les diaporamas
+    quarto render docs                          # puis le site, dans docs/_site
+    quarto preview docs                         # pour travailler une page
+
+Les liens vers les expériences de l'instance MLflow du projet (`fiqual-banc-essai` = 1, `fiqual-typl` = 59)
+sont dans `docs/_variables.yml` ; le diaporama a les siens écrits en clair.
+
+**Publication.** Le workflow `.github/workflows/site.yml` publie sur GitHub Pages à chaque push
+qui touche `docs/`. À activer une fois : *Settings > Pages > Source : GitHub Actions*.
+
 # Claude code
 
-J'utilise claude code pour debug et génération de certains codes que j'adapte. ça reste totalement sous contrôle.  
-    
+Claude code est utilisé pour debug et génération de certains codes que j'adapte.

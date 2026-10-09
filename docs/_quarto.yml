@@ -1,0 +1,62 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - index.qmd
+    - pipeline.qmd
+    - masques.qmd
+    - cases.qmd
+    - ocr.qmd
+    - evaluation.qmd
+    - presentations.qmd
+    - ressources.qmd
+  resources:
+    - presentations/_output/*.html
+    - presentations/*.svg
+
+lang: fr
+execute:
+  echo: false
+  warning: false
+
+website:
+  title: "Mesure de la qualité du RP"
+  site-url: https://inseefrlab.github.io/mesure-qualite-rp/
+  repo-url: https://github.com/InseeFrLab/mesure-qualite-rp
+  repo-actions: [source]
+  search: true
+  navbar:
+    background: primary
+    left:
+      - text: "Accueil"
+        href: index.qmd
+      - text: "Pipeline"
+        href: pipeline.qmd
+      - text: "Masques et découpage"
+        href: masques.qmd
+      - text: "Cases cochées"
+        href: cases.qmd
+      - text: "OCR"
+        href: ocr.qmd
+      - text: "Évaluation"
+        href: evaluation.qmd
+      - text: "Présentations"
+        href: presentations.qmd
+      - text: "Ressources"
+        href: ressources.qmd
+  page-footer:
+    left: "Insee · Fiqual automatique · étude en cours"
+    right:
+      - icon: github
+        href: https://github.com/InseeFrLab/mesure-qualite-rp
+        aria-label: "Dépôt GitHub"
+
+format:
+  html:
+    theme: [cosmo, site.scss]
+    toc: true
+    toc-title: "Sur cette page"
+    smooth-scroll: true
+    code-tools: false
+    link-external-newwindow: true
+    df-print: paged

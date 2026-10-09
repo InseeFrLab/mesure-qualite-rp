@@ -1,0 +1,13 @@
+---
+title: "Présentations"
+subtitle: "Les supports de présentation du projet"
+listing:
+  contents: presentations/index.yml
+  type: grid
+  grid-columns: 2
+  fields: [date, title, subtitle, description, categories]
+  sort: "date desc"
+  categories: true
+page-layout: full
+---
+

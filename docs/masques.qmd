@@ -1,0 +1,80 @@
+---
+title: "Masques et découpage"
+subtitle: "Retrouver les zones du questionnaire et les découper en blocs"
+---
+
+## Le problème
+
+Un questionnaire est imprimé : ses cases, ses cadres et ses champs sont toujours au même endroit **sur le papier**. On peut donc relever une fois leurs positions, en fraction de la page, et les ranger dans un fichier de configuration par millésime (`configs/positions`). C'est la méthode la plus simple, et elle ne demande aucun modèle.
+
+Elle suppose que le scan est bien cadré. Quand l'image est légèrement décalée ou tournée, la zone ne tombe plus sur l'écriture, et le lecteur le plus performant lit mal un morceau de lettre.
+
+{{< include _includes/masques.html >}}
+
+## Six façons de trouver une zone
+
+Le module `perception/detection.py` met six méthodes sur le même pied : chacune reçoit une page et rend, pour le nom et pour le prénom, une zone ou rien.
+
+1. **Positions fixes** (le gabarit) : les zones relevées une fois.
+2. **Encre dans le bloc** : on cherche les deux lignes d'écriture les plus chargées dans le bloc d'identité, de haut en bas.
+3. **Gabarit élargi + encre** : le gabarit donne une fenêtre élargie, l'encre trouve la ligne dedans.
+4. **Un détecteur de texte** (TeleOCR ou PaddleOCR) propose des rectangles ; on garde celui qui tombe dans la fenêtre du gabarit.
+5. **Détecteur + encre** : comme la méthode 4, puis l'encre ajuste les bords pour ne couper aucune lettre.
+
+Pour les méthodes 4 et 5, le gabarit ne sert qu'à **choisir** parmi les rectangles du détecteur lequel est le nom et lequel est le prénom.
+
+## Ce que ça donne
+
+Chaque zone trouvée est lue par le même lecteur : la différence entre deux lignes vient donc uniquement de la façon de trouver la zone. Le test est refait sur des pages volontairement décalées de 1 % et tournées de 1°.
+
+::: {.chiffres}
+
+| Méthode | Zones trouvées | Justes | Page de travers | Perte (points) | Secondes par page |
+|---|---|---|---|---|---|
+| Gabarit élargi + encre | 100,0 % | **72,2 %** | **42,4 %** | 29,8 | 0,0 |
+| Positions fixes | 100,0 % | 63,9 % | 35,5 % | 28,4 | 0,0 |
+| TeleOCR | 74,3 % | 55,2 % | 36,4 % | 18,8 | 38,0 |
+| TeleOCR + encre | 74,3 % | 52,8 % | 34,0 % | 18,8 | 38,0 |
+| PaddleOCR | 65,7 % | 36,1 % | 35,2 % | 0,9 | 7,2 |
+| PaddleOCR + encre | 65,7 % | 32,2 % | 34,3 % | -2,1 | 7,2 |
+| Encre dans le bloc | 99,7 % | 26,6 % | 23,9 % | 2,7 | 0,0 |
+
+:::
+
+::: {.source}
+Source : essai « detection-comparaison » du 08/10/2026 (non retenu), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}). « Justes » : part des noms et prénoms lus exactement.
+:::
+
+Trois constats :
+
+- La meilleure méthode sur page droite combine le gabarit et l'encre, mais **aucune ne tient bien sur une page de travers** : les positions fixes et leurs variantes perdent environ 28 à 30 points.
+- Les détecteurs de texte résistent mieux au décalage, mais trouvent moins de zones et lisent moins bien, et TeleOCR est lent (de l'ordre de 38 secondes par page).
+- L'encre seule, sans repère, trouve presque toujours une zone mais pas la bonne.
+
+## Le recalage sur le cadre imprimé
+
+Pour qu'un gabarit survive à un scan décalé, on peut recaler la page sur un bulletin modèle avant d'appliquer les positions : on retrouve d'abord le cadre imprimé, puis on affine avec des points caractéristiques (ORB).
+
+::: {.chiffres}
+
+| Méthode | Bulletins | Écart avant | Écart après | Bulletins améliorés |
+|---|---|---|---|---|
+| cadre puis ORB | 40 | 0,515 | 0,493 | 70 % |
+
+:::
+
+::: {.source}
+Source : essai « recalage-BI-N40 » du 30/09/2026 (non retenu), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}). Zone BI, campagne RG25.
+:::
+
+## Du masque aux blocs
+
+Une fois les zones fixées, le questionnaire est découpé en **blocs** : le bloc d'identité du bulletin (nom et prénom avec leurs libellés imprimés), la question « type de logement » de la feuille de logement, etc. Le bloc, plutôt que la ligne isolée, est l'unité envoyée au modèle : un modèle multimodal lit nettement mieux le nom et le prénom sur le bloc entier que sur la ligne isolée (voir [OCR](ocr.qmd)). La présence des libellés imprimés est une explication possible, pas encore vérifiée.
+
+Les champs et leur ordre suivent le questionnaire. Pour les cases, l'ordre de lecture (de gauche à droite et de haut en bas) est aussi celui qu'exige la variable `DETAIL` du Fiqual.
+
+## Ce qui reste à faire
+
+- Choisir la méthode de repérage pour la production (positions fixes recalées, ou détecteur de texte).
+- Automatiser la détection du **masque** d'un nouveau millésime, pour ne plus relever les positions à la main.
+- Mesurer la tenue sur RG26, dont le formulaire peut avoir évolué.

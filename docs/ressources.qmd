@@ -1,0 +1,47 @@
+---
+title: "Ressources"
+subtitle: "Liens, supports et vocabulaire"
+---
+
+## Liens
+
+::: {.cartes}
+[<span class="t"><i class="bi bi-github"></i> Dépôt GitHub</span><span class="d">InseeFrLab/mesure-qualite-rp : code, notebooks, configuration, ce site.</span>](https://github.com/InseeFrLab/mesure-qualite-rp){.carte}
+
+[<span class="t"><i class="bi bi-graph-up"></i> MLflow du projet</span><span class="d">Tous les essais : paramètres, métriques et fichiers de résultats. Accès sur identifiants.</span>](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/){.carte}
+
+[<span class="t"><i class="bi bi-cloud"></i> SSP Cloud</span><span class="d">Projet projet-mesure-qualite-rp : données, services et secrets. Accès sur identifiants.</span>](https://datalab.sspcloud.fr/){.carte}
+
+[<span class="t"><i class="bi bi-easel"></i> Les diaporamas</span><span class="d">La page des présentations, avec une carte par support.</span>](presentations.qmd){.carte}
+
+[<span class="t"><i class="bi bi-palette"></i> Extension Quarto Insee</span><span class="d">La charte graphique utilisée pour les diaporamas (InseeFrLab/quarto-insee-extension).</span>](https://github.com/InseeFrLab/quarto-insee-extension){.carte}
+
+[<span class="t"><i class="bi bi-book"></i> Documentation Quarto</span><span class="d">L'outil qui produit ce site et les diaporamas.</span>](https://quarto.org/docs/guide/){.carte}
+:::
+
+## Pour refaire les calculs
+
+- Les notebooks du dépôt (`notebooks/`) décrivent les études dans l'ordre. Ils sont commités sans leurs sorties, car celles-ci contiennent des images de questionnaires et des données individuelles.
+- Les essais sont dans MLflow ; les chiffres du site sont écrits dans les pages, avec sous chaque tableau le nom de l'essai d'origine (voir [Évaluation](evaluation.qmd)).
+- Les paramètres par campagne et les positions des zones sont dans `configs/`.
+
+## Glossaire
+
+| Terme | Sens |
+|---|---|
+| **RP** | Recensement de la population. |
+| **FL** | Feuille de logement. |
+| **BI** | Bulletin individuel. |
+| **Fiqual** | Fichier de mesure de la qualité, produit par le prestataire et que ce projet cherche à produire automatiquement. |
+| **Ficod** | Fichier de codage de la production. Le dispositif ne le lit jamais en production. |
+| **PMQ** | Prestataire de mesure de la qualité. |
+| **RG25, RG26** | Les campagnes de recensement de 2025 et de 2026. |
+| **TYPL** | Variable « type de logement », question 1 de la feuille de logement. |
+| **Bloc** | Extrait du questionnaire envoyé à un modèle, avec ses libellés imprimés. |
+| **Gabarit** | Positions des zones relevées une fois, en fraction de la page. |
+| **OCR / HTR** | Reconnaissance de caractères / d'écriture manuscrite. |
+| **Multimodal** | Modèle qui lit une image et un texte. |
+| **CER** | Taux de caractères à corriger (*character error rate*). |
+| **IC à 95 %** | Intervalle dans lequel se trouve très probablement la vraie valeur. |
+| **McNemar** | Test pour comparer deux modèles sur les mêmes lignes. |
+| **Erreur non signalée** | Réponse fausse sans signal de doute. |

@@ -32,3 +32,17 @@ mlruns/
 # Systeme
 .DS_Store
 *.egg-info/
+
+# Presentations : extension Quarto Insee (44 Mo, a reinstaller) et rendus HTML
+docs/presentations/_extensions/
+docs/presentations/*.html
+
+# Site Quarto
+docs/_site/
+docs/.quarto/
+docs/_extensions/
+docs/presentations/_output/
+docs/presentations/.quarto/
+docs/presentations/_extensions/
+docs/presentations/*.html
+docs/presentations/*_files/

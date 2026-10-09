@@ -1,0 +1,60 @@
+name: Site
+
+# Rend les présentations puis le site, et les publie sur GitHub Pages.
+# Aucun secret : les chiffres sont écrits dans les pages.
+on:
+  push:
+    branches: [chore/structure-initiale, main, website-docs]
+    paths:
+      - "docs/**"
+      - "scripts/installer_extensions.sh"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dépendances Python du rendu (le graphique du diaporama)
+        run: pip install matplotlib jupyter
+
+      - name: Extensions Quarto (charte Insee, icônes)
+        run: bash scripts/installer_extensions.sh
+
+      - name: Rendu des présentations
+        run: quarto render docs/presentations
+
+      - name: Rendu du site
+        run: quarto render docs
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,42 @@
+<figure class="schema">
+<svg viewBox="0 0 1500 480" role="img" font-family="inherit"
+     aria-label="Trois scans du même questionnaire. Scan de référence : la zone fixe entoure l'écriture. Scan décalé avec positions fixes : la zone coupe l'écriture. Scan décalé avec zone recalée sur le cadre imprimé : la zone entoure de nouveau l'écriture.">
+  <defs>
+    <g id="mq-page">
+      <rect x="40" y="50" width="400" height="350" rx="6" fill="#fff" stroke="#9db8d9" stroke-width="3"/>
+      <rect x="80" y="130" width="320" height="160" fill="none" stroke="#0f417a" stroke-width="4"/>
+      <text x="90" y="156" font-size="18" fill="#4a5b6d">Nom</text>
+      <path d="M110,218 q12,-26 24,0 t24,0 t24,0 t24,0 t24,0 t24,0 t24,0 t24,0" fill="none" stroke="#1b2a3a" stroke-width="4" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <g font-size="24" font-weight="700" fill="#0c3a5a" text-anchor="middle">
+    <text x="240" y="30">Scan de référence</text>
+    <text x="740" y="30">Scan décalé, positions fixes</text>
+    <text x="1240" y="30">Scan décalé, zone recalée</text>
+  </g>
+  <!-- 1. référence -->
+  <use href="#mq-page"/>
+  <rect x="96" y="186" width="288" height="64" fill="none" stroke="#d98c07" stroke-width="4" stroke-dasharray="10 7"/>
+  <!-- 2. décalé, zone qui ne bouge pas -->
+  <g transform="translate(500,0)">
+    <use href="#mq-page" transform="translate(18,28) rotate(2 240 225)"/>
+    <rect x="96" y="186" width="288" height="64" fill="none" stroke="#d98c07" stroke-width="4" stroke-dasharray="10 7"/>
+  </g>
+  <!-- 3. décalé, zone qui suit le cadre -->
+  <g transform="translate(1000,0)">
+    <use href="#mq-page" transform="translate(18,28) rotate(2 240 225)"/>
+    <rect x="96" y="186" width="288" height="64" fill="none" stroke="#d98c07" stroke-width="4" stroke-dasharray="10 7" transform="translate(18,28) rotate(2 240 225)"/>
+  </g>
+  <g font-size="22" fill="#1b2a3a" text-anchor="middle">
+    <text x="240" y="440">La zone tombe sur l'écriture</text>
+    <text x="740" y="440">La zone coupe l'écriture</text>
+    <text x="1240" y="440">La zone suit le cadre imprimé</text>
+  </g>
+  <g font-size="19" fill="#4a5b6d" text-anchor="middle">
+    <text x="240" y="466">cadre imprimé en bleu, zone de lecture en jaune</text>
+    <text x="740" y="466">décalage de 1 % et rotation de 1°</text>
+    <text x="1240" y="466">le recalage retrouve le cadre</text>
+  </g>
+</svg>
+<figcaption>Une zone définie une fois en fraction de la page ne suit pas un scan décalé. Le recalage la déplace avec le cadre imprimé du questionnaire.</figcaption>
+</figure>

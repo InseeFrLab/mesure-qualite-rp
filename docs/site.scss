@@ -1,0 +1,76 @@
+/*-- scss:defaults --*/
+$primary: #0f417a;
+$body-color: #1b2a3a;
+$link-color: #0f417a;
+$navbar-bg: #0f417a;
+$navbar-fg: #ffffff;
+$navbar-hl: #ffc300;
+$headings-color: #0c3a5a;
+$font-size-root: 17px;
+$line-height-base: 1.6;
+$border-radius: 10px;
+
+/*-- scss:rules --*/
+:root {
+  --pe-bleu: #0f417a;
+  --pe-bleu-nuit: #0c3a5a;
+  --pe-bleu-clair: #f2f7fd;
+  --pe-trait: #d3e3f6;
+  --pe-jaune: #ffc300;
+  --pe-encre-douce: #4a5b6d;
+}
+
+.navbar { border-bottom: 4px solid var(--pe-jaune); }
+.navbar .nav-link { font-weight: 600; }
+.navbar-brand .navbar-title { font-weight: 700; }
+
+h1.title { color: var(--pe-bleu-nuit); font-weight: 700; margin-bottom: 0.2em; }
+.quarto-title .subtitle, .subtitle { color: var(--pe-encre-douce); font-size: 1.15em; }
+h2 { margin-top: 2.2rem; padding-bottom: 0.3rem; border-bottom: 2px solid var(--pe-trait); }
+h3 { margin-top: 1.6rem; }
+main .content { max-width: 70ch; }
+main .content table, main .content figure, main .content .stats, main .content .cartes { max-width: none; }
+
+/* Tableaux */
+table { font-size: 0.92em; border-collapse: separate; border-spacing: 0; margin: 1.2rem 0; width: auto; min-width: 60%; }
+table thead th { background: var(--pe-bleu); color: #fff; font-weight: 600; padding: 0.55em 0.9em; border: 0; vertical-align: bottom; }
+table thead th:first-child { border-top-left-radius: 8px; }
+table thead th:last-child { border-top-right-radius: 8px; }
+table tbody td { padding: 0.45em 0.9em; border: 0; border-bottom: 1px solid var(--pe-trait); font-variant-numeric: tabular-nums; }
+table tbody tr:nth-child(even) td { background: var(--pe-bleu-clair); }
+table th, table td { text-align: left; }
+.chiffres table th:not(:first-child), .chiffres table td:not(:first-child) { text-align: right !important; }
+table td strong { color: var(--pe-bleu); }
+
+/* Chiffres clés */
+.stats { display: flex; flex-wrap: wrap; gap: 1.2rem; margin: 1.4rem 0; }
+.stat { flex: 1 1 14rem; padding: 1.1rem 1.3rem; background: var(--pe-bleu-clair); border-radius: 12px; }
+.stat .n { font-size: 2.4rem; font-weight: 700; line-height: 1; color: var(--pe-bleu); font-variant-numeric: tabular-nums; }
+.stat .l { margin-top: 0.4rem; font-weight: 600; }
+.stat .d { margin-top: 0.2rem; font-size: 0.85em; color: var(--pe-encre-douce); }
+.stat.alerte { background: #fff1bd; }
+.stat.alerte .n { color: #7a4d00; }
+
+/* Cartes de navigation */
+.cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1.1rem; margin: 1.4rem 0; }
+.carte { display: flex; flex-direction: column; gap: 0.35rem; padding: 1.1rem 1.3rem; border: 1px solid var(--pe-trait);
+         border-radius: 12px; background: #fff; color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s; }
+.carte:hover { border-color: var(--pe-bleu); box-shadow: 0 4px 14px rgba(15, 65, 122, .12); text-decoration: none; }
+.carte .t { font-weight: 700; color: var(--pe-bleu); font-size: 1.05em; }
+.carte .d { font-size: 0.9em; color: var(--pe-encre-douce); line-height: 1.45; }
+
+/* Étiquettes d'avancement */
+.etat { display: inline-block; padding: 0.05em 0.6em; border-radius: 999px; font-size: 0.82em; font-weight: 600; white-space: nowrap; }
+.etat.fait { background: #d9efe3; color: #12583a; }
+.etat.test { background: #dcebfb; color: #0f417a; }
+.etat.afaire { background: #fff1bd; color: #7a4d00; }
+
+/* Schémas */
+figure.schema { margin: 1.6rem 0; }
+figure.schema svg { width: 100%; height: auto; display: block; }
+figure.schema figcaption { font-size: 0.88em; color: var(--pe-encre-douce); margin-top: 0.5rem; }
+.source { font-size: 0.82em; color: var(--pe-encre-douce); margin-top: -0.6rem; }
+
+/* Cartes de présentations (listing Quarto) */
+.quarto-grid-item .card { border-color: var(--pe-trait); border-radius: 12px; }
+.quarto-grid-item .card:hover { border-color: var(--pe-bleu); }

@@ -1,0 +1,46 @@
+---
+title: "Mesure de la qualité du recensement"
+subtitle: "Produire le Fiqual par des moyens automatiques"
+---
+
+## L'objectif
+
+Après chaque campagne du recensement de la population, un prestataire ressaisit une partie des questionnaires pour mesurer la qualité du codage. Le résultat est le fichier **Fiqual**. Ce projet cherche à produire ce fichier automatiquement, à partir des images des questionnaires et du document de consignes.
+
+Je ne vise pas zéro erreur. L'objectif est de faire **au moins aussi bien que la saisie actuelle du PMQ**, avec un taux d'erreur mesuré et connu.
+
+Une règle structure tout le projet : le Fiqual est une **seconde mesure, obtenue indépendamment** du Ficod. Le dispositif n'accède donc jamais au Ficod en production. Il ne s'en sert que pendant les études, comme source d'exemples annotés et pour vérifier la lecture des fichiers.
+
+## Le périmètre
+
+- **Documents :** la feuille de logement (FL) et le bulletin individuel (BI).
+- **Campagnes :** RG25 pour les mesures, RG26 pour vérifier que les résultats tiennent sur une autre campagne.
+- **Premier champ étudié :** le nom et le prénom manuscrits du bulletin individuel, puis les cases à cocher de la feuille de logement.
+
+## Où en est-on
+
+<div class="stats">
+<div class="stat"><div class="n">84,2 %</div><div class="l">de noms et prénoms lus correctement</div><div class="d">modèle multimodal gemma4, sur le bloc entier</div></div>
+<div class="stat"><div class="n">60,3 %</div><div class="l">avec un petit modèle entraîné chez nous</div><div class="d">TrOCR-base ajusté, validation croisée</div></div>
+<div class="stat alerte"><div class="n">14,9 %</div><div class="l">d'erreurs sans signal d'alerte</div><div class="d">le modèle se trompe sans dire « illisible »</div></div>
+</div>
+
+Ces chiffres portent sur 335 lignes (un nom et un prénom pour 169 bulletins) de la campagne RG25. La page [Évaluation](evaluation.qmd) explique comment ils sont mesurés et leurs limites.
+
+## Parcourir le site
+
+::: {.cartes}
+[<span class="t">Le pipeline</span><span class="d">Les quatre étapes, de l'image du questionnaire au fichier Fiqual, et où en est chacune.</span>](pipeline.qmd){.carte}
+
+[<span class="t">Masques et découpage</span><span class="d">Retrouver les zones du questionnaire sur un scan décalé et les découper en blocs.</span>](masques.qmd){.carte}
+
+[<span class="t">Cases cochées</span><span class="d">Lire les cases par la densité d'encre ou par un modèle, puis appliquer la règle de saisie.</span>](cases.qmd){.carte}
+
+[<span class="t">OCR et manuscrit</span><span class="d">Modèles multimodaux, OCR spécialisés, entraînement sur nos données et complémentarité.</span>](ocr.qmd){.carte}
+
+[<span class="t">Évaluation</span><span class="d">Référence, découpage des données, mesures et suivi des essais dans MLflow.</span>](evaluation.qmd){.carte}
+
+[<span class="t">Présentations</span><span class="d">Les supports de présentation, sous forme de cartes.</span>](presentations.qmd){.carte}
+
+[<span class="t">Ressources</span><span class="d">Dépôt, MLflow, SSP Cloud, glossaire.</span>](ressources.qmd){.carte}
+:::

@@ -1,0 +1,105 @@
+/* Compléments à la charte Insee (extension insee-clair) : tableaux, chiffres clés, schéma.
+   Couleurs reprises du thème : B5 #0f417a, B6 #0c3a5a, B4 #286ac7, B1 #c4e1ff, J4 #ffc300. */
+
+:root {
+  --pe-bleu: #0f417a;
+  --pe-bleu-nuit: #0c3a5a;
+  --pe-bleu-clair: #f2f7fd;
+  --pe-trait: #d3e3f6;
+  --pe-encre: #1b2a3a;
+  --pe-encre-douce: #4a5b6d;
+}
+
+/* --- Tableaux : lisibles de loin, chiffres alignés --- */
+.reveal .slides table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.6em;
+  margin: 0.7em auto;
+  width: auto;
+  min-width: 72%;
+}
+.reveal .slides table thead th {
+  background: var(--pe-bleu);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.5em 0.9em;
+  border: 0;
+  text-align: left;
+  vertical-align: bottom;
+}
+.reveal .slides table thead th:first-child { border-top-left-radius: 10px; }
+.reveal .slides table thead th:last-child { border-top-right-radius: 10px; }
+.reveal .slides table tbody td {
+  padding: 0.42em 0.9em;
+  border: 0;
+  border-bottom: 1px solid var(--pe-trait);
+  font-variant-numeric: tabular-nums;
+  color: var(--pe-encre);
+}
+.reveal .slides table tbody tr:nth-child(even) td { background: var(--pe-bleu-clair); }
+.reveal .slides table tbody tr:last-child td { border-bottom: 0; }
+.reveal .slides table th:not(:first-child),
+.reveal .slides table td:not(:first-child) { text-align: right !important; }
+.reveal .slides table td strong { color: var(--pe-bleu); font-weight: 700; }
+
+/* --- Chiffres clés --- */
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  justify-content: center;
+  margin: 0.9em 0 0.6em;
+}
+.stat {
+  flex: 1 1 0;
+  min-width: 240px;
+  max-width: 440px;
+  padding: 24px 28px 22px;
+  background: var(--pe-bleu-clair);
+  border-radius: 14px;
+  text-align: left;
+}
+.stat .n {
+  font-size: 2.7em;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--pe-bleu);
+  font-variant-numeric: tabular-nums;
+}
+.stat .l { font-size: 0.72em; margin-top: 0.5em; color: var(--pe-encre); font-weight: 600; }
+.stat .d { font-size: 0.56em; margin-top: 0.35em; color: var(--pe-encre-douce); font-variant-numeric: tabular-nums; }
+.stat.alerte { background: #fff1bd; }
+.stat.alerte .n { color: #7a4d00; }
+
+/* --- Schéma du pipeline --- */
+#pipeline-envisage figure { margin: 0.2em 0 0; }
+#pipeline-envisage svg { display: block; width: 100%; height: auto; max-height: 640px; }
+#pipeline-envisage figcaption { font-size: 0.62em; color: var(--pe-encre-douce); margin-top: 0.5em; text-align: left; }
+
+/* --- Graphiques et phrases de conclusion --- */
+.reveal .slides img { border-radius: 6px; }
+.reveal .slides p { margin: 0.5em 0; }
+
+/* --- Liens utiles --- */
+.liens ul { list-style: none; padding: 0; margin: 0.8em 0 0; display: flex; flex-direction: column; gap: 22px; }
+.liens li { font-size: 0.8em; line-height: 1.35; color: var(--pe-encre-douce); display: grid;
+            grid-template-columns: 2.2em 1fr; column-gap: 0.4em; align-items: start; }
+.liens li > .fa-solid, .liens li > .fa-brands, .liens li > svg, .liens li > i {
+  color: var(--pe-bleu); font-size: 1.5em; grid-row: 1 / span 2; justify-self: center; }
+.liens a { color: var(--pe-bleu); text-decoration: none; border-bottom: 2px solid var(--pe-trait); }
+.liens a:hover { border-bottom-color: var(--pe-bleu); }
+
+/* --- Source des chiffres, sous chaque tableau --- */
+.reveal .slides .source { font-size: 0.42em; color: var(--pe-encre-douce); margin-top: 0.8em; text-align: left; }
+.reveal .slides .source a { color: var(--pe-bleu); }
+
+/* --- Diapositive « erreurs de gemma » --- */
+.reveal .slides .consigne { margin: 0.5em 0; padding: 0.6em 1em; background: var(--pe-bleu-clair); border-radius: 10px;
+                            font-style: italic; color: var(--pe-bleu-nuit); font-size: 0.85em; }
+.reveal .slides .mot { display: inline-block; padding: 0.02em 0.55em; border-radius: 8px; font-weight: 700; letter-spacing: 0.04em;
+                       font-variant-numeric: tabular-nums; }
+.reveal .slides .mot.faux { background: #fff1bd; color: #7a4d00; }
+.reveal .slides .mot.bon { background: #d9efe3; color: #12583a; }
+.reveal .slides .stat.long { flex: 1 1 100%; max-width: none; padding: 16px 22px; }
+.reveal .slides .stat.long .n { font-size: 1.9em; }

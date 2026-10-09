@@ -1,0 +1,55 @@
+---
+title: "Cases cochées"
+subtitle: "Lire une question à cases, puis appliquer la règle de saisie"
+---
+
+## Ce qu'il faut produire
+
+Pour une question à cases (par exemple « type de logement » de la feuille de logement, avec six cases), le Fiqual attend **une réponse** : le numéro de la case retenue, ou rien. Deux choses sont donc distinctes :
+
+- **voir** : quel est l'état de chaque case ?
+- **décider** : quelle réponse en déduire, quand plusieurs cases sont marquées ?
+
+## La règle de saisie
+
+Les consignes définissent cinq états pour une case : **vide**, **cochée** (une croix, ou une case atteinte par une croix), **biffée** (à demi cochée, un seul trait), **colorée** (entièrement remplie) et **autre** (raturée, gribouillée). La règle codée dans le notebook `02_test_modele_multimodal` s'énonce ainsi :
+
+1. Le marquage le plus fort l'emporte : cochée, puis biffée, puis colorée. Les cases vides et « autre » ne comptent pas.
+2. Si plusieurs cases ont ce marquage le plus fort, on retient le numéro **le plus élevé**.
+3. Deux exceptions : pour certaines questions du bulletin (Q10, Q11) on retient le numéro le plus bas, et pour d'autres (Q9, plusieurs questions de la feuille de logement) plusieurs cases marquées donnent une réponse **vide**.
+4. Si aucune case n'est marquée, la réponse est vide.
+
+Cette règle se teste en une ligne, sans modèle. Elle vit aujourd'hui dans un notebook ; elle est destinée à `src/mesure_qualite/regles`.
+
+## Trois façons de lire
+
+{{< include _includes/cases.html >}}
+
+- **La densité d'encre** (aucun modèle) mesure la part de pixels sombres dans chaque case. C'est un repère bas : elle sépare bien vide et marquée, mais ne distingue pas cochée de biffée, alors que c'est précisément la distinction qui change la valeur de la question.
+- **Mode A**, un modèle multimodal : on lui demande l'état de chaque case, puis la règle ci-dessus, en code, donne la réponse.
+- **Mode B**, le même modèle : on lui donne la règle dans sa consigne et on lui demande la réponse directement.
+
+::: {.chiffres}
+
+| Méthode | Pages comparées | Mode A (état + règle) | Mode B (réponse directe) | Secondes par page |
+|---|---|---|---|---|
+| Densité d'encre (aucun modèle) | 120 | 98,3 % | — | 0,0 |
+| qwen3-vl 4B | 120 | 82,5 % | 55,8 % | 9,3 |
+
+:::
+
+::: {.source}
+Source : essais « densite-typl-rg25 » et « Qwen/Qwen3-VL-4B-Instruct » du 24/09/2026 (non retenus), expérience [fiqual-banc-essai]({{< var mlflow_banc >}}). Concordance avec le Fiqual saisi, question « type de logement », campagne RG25. Pour la densité d'encre, seul le mode A existe : il n'y a pas de modèle.
+:::
+
+## Ce qu'on en retient
+
+- Sur cette question, la **densité d'encre fait mieux que le modèle de 4 milliards de paramètres testé**, sans modèle et sans délai. Elle ne le fera pas pour toutes les questions, notamment celles où cochée et biffée se distinguent.
+- Pour le modèle, **mode A nettement meilleur que mode B** : laisser le modèle décrire ce qu'il voit puis appliquer la règle en code vaut mieux que lui confier la règle. C'est un argument pour le pipeline en deux temps (lecture, puis consignes), présenté dans [le pipeline](pipeline.qmd).
+- La règle écrite en code a un autre avantage : elle se teste, se versionne et un gestionnaire peut la relire.
+
+## Limites
+
+- Une seule question (type de logement, page 4 de la feuille de logement) et 120 pages. Les autres questions n'ont pas été mesurées de la même façon.
+- Un seul modèle de petite taille pour la comparaison A/B. Un modèle plus grand pourrait réduire l'écart.
+- Les désaccords restants entre la densité d'encre et le Fiqual sont peu nombreux (2 sur 120) : il vaut la peine de les regarder un à un avant de généraliser.

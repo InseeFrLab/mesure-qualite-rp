@@ -1,0 +1,52 @@
+<figure class="schema">
+<svg viewBox="0 0 1500 520" role="img" font-family="inherit"
+     aria-label="Deux façons de lire une question à cases. Mode A : le modèle décrit l'état de chaque case, puis une règle écrite en code donne la réponse. Mode B : le modèle applique lui-même la règle, qui est écrite dans sa consigne, et donne directement la réponse.">
+  <defs>
+    <marker id="cs-fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0f417a"/>
+    </marker>
+  </defs>
+  <!-- la question -->
+  <rect x="20" y="170" width="360" height="180" rx="12" fill="#f2f7fd" stroke="#9db8d9" stroke-width="3"/>
+  <text x="200" y="208" font-size="22" font-weight="700" text-anchor="middle" fill="#0c3a5a">Question à six cases</text>
+  <g stroke="#0f417a" stroke-width="3" fill="#fff">
+    <rect x="34" y="238" width="38" height="38"/><rect x="90" y="238" width="38" height="38"/>
+    <rect x="146" y="238" width="38" height="38"/><rect x="202" y="238" width="38" height="38"/>
+    <rect x="258" y="238" width="38" height="38"/><rect x="314" y="238" width="38" height="38"/>
+  </g>
+  <path d="M96,244 L122,270 M122,244 L96,270" stroke="#1b2a3a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M208,270 L234,244" stroke="#1b2a3a" stroke-width="4" stroke-linecap="round"/>
+  <g font-size="18" fill="#4a5b6d" text-anchor="middle">
+    <text x="53" y="302">1</text><text x="109" y="302">2</text><text x="165" y="302">3</text>
+    <text x="221" y="302">4</text><text x="277" y="302">5</text><text x="333" y="302">6</text>
+  </g>
+  <text x="200" y="334" font-size="18" fill="#4a5b6d" text-anchor="middle">ici : case 2 cochée, case 4 biffée</text>
+  <!-- mode A -->
+  <text x="470" y="48" font-size="24" font-weight="700" fill="#0c3a5a">Mode A : le modèle décrit, le code décide</text>
+  <line x1="386" y1="230" x2="468" y2="140" stroke="#0f417a" stroke-width="4" marker-end="url(#cs-fleche)"/>
+  <rect x="476" y="80" width="330" height="120" rx="12" fill="#fff" stroke="#286ac7" stroke-width="3"/>
+  <text x="641" y="122" font-size="26" font-weight="700" text-anchor="middle" fill="#0c3a5a">Modèle</text>
+  <text x="641" y="154" font-size="21" text-anchor="middle" fill="#4a5b6d">état de chaque case</text>
+  <text x="641" y="180" font-size="21" text-anchor="middle" fill="#4a5b6d">(vide, cochée, biffée…)</text>
+  <line x1="812" y1="140" x2="898" y2="140" stroke="#0f417a" stroke-width="4" marker-end="url(#cs-fleche)"/>
+  <text x="855" y="122" font-size="20" font-style="italic" text-anchor="middle" fill="#0c3a5a">états</text>
+  <rect x="906" y="80" width="300" height="120" rx="12" fill="#0f417a"/>
+  <text x="1056" y="122" font-size="26" font-weight="700" text-anchor="middle" fill="#fff">Règle de saisie</text>
+  <text x="1056" y="154" font-size="21" text-anchor="middle" fill="#c4e1ff">écrite en code,</text>
+  <text x="1056" y="180" font-size="21" text-anchor="middle" fill="#c4e1ff">identique à chaque fois</text>
+  <line x1="1212" y1="140" x2="1288" y2="140" stroke="#0f417a" stroke-width="4" marker-end="url(#cs-fleche)"/>
+  <rect x="1296" y="100" width="184" height="80" rx="12" fill="#0c3a5a"/>
+  <text x="1388" y="150" font-size="28" font-weight="700" text-anchor="middle" fill="#fff">réponse</text>
+  <!-- mode B -->
+  <text x="470" y="318" font-size="24" font-weight="700" fill="#0c3a5a">Mode B : le modèle fait tout</text>
+  <line x1="386" y1="290" x2="468" y2="396" stroke="#0f417a" stroke-width="4" marker-end="url(#cs-fleche)"/>
+  <rect x="476" y="340" width="730" height="120" rx="12" fill="#fff" stroke="#286ac7" stroke-width="3"/>
+  <text x="841" y="382" font-size="26" font-weight="700" text-anchor="middle" fill="#0c3a5a">Modèle</text>
+  <text x="841" y="414" font-size="21" text-anchor="middle" fill="#4a5b6d">applique lui-même la règle,</text>
+  <text x="841" y="440" font-size="21" text-anchor="middle" fill="#4a5b6d">qui est écrite dans sa consigne</text>
+  <line x1="1212" y1="400" x2="1288" y2="400" stroke="#0f417a" stroke-width="4" marker-end="url(#cs-fleche)"/>
+  <rect x="1296" y="360" width="184" height="80" rx="12" fill="#0c3a5a"/>
+  <text x="1388" y="410" font-size="28" font-weight="700" text-anchor="middle" fill="#fff">réponse</text>
+</svg>
+<figcaption>Les deux modes reçoivent la même image et rendent la même réponse. Ils diffèrent par l'endroit où vit la règle de saisie : dans du code testable (mode A) ou dans la consigne du modèle (mode B).</figcaption>
+</figure>
