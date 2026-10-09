@@ -1,11 +1,12 @@
 """Suivi des essais Fiqual dans MLflow.
 
-Trois regles, appliquees par ce module pour qu'on n'ait pas a s'en souvenir :
+Quatre regles, appliquees par ce module pour qu'on n'ait pas a s'en souvenir :
 
-1. Une seule experience : `fiqual-banc-essai`.
-2. Chaque essai porte les memes etiquettes : `etude`, `notebook`, `statut`,
+1. Un seul serveur : le MLflow du PROJET (identifiants dans Vault, lus automatiquement).
+2. Une seule experience : `fiqual-banc-essai`.
+3. Chaque essai porte les memes etiquettes : `etude`, `notebook`, `statut`,
    `git_commit`. On retrouve donc tout par etude, et non par nom de notebook.
-3. Pour chaque etude, UN SEUL essai a le statut `retenu`. C'est celui que la
+4. Pour chaque etude, UN SEUL essai a le statut `retenu`. C'est celui que la
    presentation affiche. Les autres sont `exploratoire` ou `remplace`.
 
 Utilisation dans un notebook :
@@ -18,9 +19,15 @@ Utilisation dans un notebook :
 
     suivi.tableau()                          # ou en est-on ?
     suivi.retenir(run.info.run_id)           # ce chiffre devient le chiffre officiel
+
+La connexion au serveur du projet se fait toute seule au premier appel. Pour la forcer
+(et echouer si le serveur du projet est inaccessible) : suivi.connecter(obligatoire=True).
 """
 import contextlib
+import json
+import os
 import platform
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -30,6 +37,7 @@ import pandas as pd
 from mlflow.tracking import MlflowClient
 
 EXPERIENCE = "fiqual-banc-essai"
+SECRET_MLFLOW = "onyxia-kv/projet-mesure-qualite-rp/MLFLOW_SECRET"
 
 # Une etude = une question a laquelle on repond. Ajouter ici toute nouvelle etude.
 ETUDES = {
@@ -40,7 +48,57 @@ ETUDES = {
     "pylaia": "PyLaia, brut et ajuste",
     "dico-noms": "liste des noms Insee comme signal ou correction",
     "derive": "indicateurs de derive sans verite terrain",
+    "banc-htr": "banc des modeles de lecture : PyLaia, TrOCR, TeleOCR et multimodaux, memes lignes",
+    "banc-decoupes": "methode de decoupe des champs (zone fixe, encre, gabarit, detecteurs) x lecteurs ajustes",
 }
+
+_CONNECTE = False
+
+
+# --------------------------------------------------------------------------- connexion
+
+def _serveur() -> str:
+    """Nom du serveur MLflow courant (sans chemin ni identifiant)."""
+    return mlflow.get_tracking_uri().split("//")[-1].split("/")[0]
+
+
+def connecter(secret: str = SECRET_MLFLOW, obligatoire: bool = False) -> str:
+    """Relie la session au serveur MLflow du PROJET (identifiants lus dans Vault, jamais affiches).
+
+    Sans Vault ou sans acces au secret : garde la configuration du service (MLflow personnel)
+    et le signale. obligatoire=True : erreur au lieu de ce repli (a utiliser avant d'enregistrer
+    un essai qui doit compter).
+    """
+    global _CONNECTE
+    raison = "commande vault absente"
+    if shutil.which("vault"):
+        r = subprocess.run(["vault", "kv", "get", "-format=json", secret],
+                           capture_output=True, text=True, timeout=60)
+        if r.returncode == 0:
+            try:
+                donnees = json.loads(r.stdout)["data"]["data"]          # KV version 2
+            except (KeyError, json.JSONDecodeError):
+                donnees = None
+                raison = "secret Vault illisible (format inattendu)"
+            if donnees:
+                os.environ.update({k: str(v) for k, v in donnees.items()})
+                if "MLFLOW_TRACKING_URI" in donnees:
+                    mlflow.set_tracking_uri(donnees["MLFLOW_TRACKING_URI"])
+                _CONNECTE = True
+                print(f"MLflow du projet : {_serveur()}")
+                return mlflow.get_tracking_uri()
+        else:
+            raison = r.stderr.strip()[:200] or "acces au secret refuse"
+    if obligatoire:
+        raise RuntimeError(f"MLflow du projet inaccessible : {raison}")
+    _CONNECTE = True
+    print(f"MLflow du projet inaccessible ({raison}) : MLflow du service utilise ({_serveur()})")
+    return mlflow.get_tracking_uri()
+
+
+def _assurer_connexion():
+    if not _CONNECTE:
+        connecter()
 
 
 def _git(*args):
@@ -51,6 +109,8 @@ def _git(*args):
         return ""
 
 
+# --------------------------------------------------------------------------- essais
+
 @contextlib.contextmanager
 def essai(etude, notebook, nom=None, graine=None, **etiquettes):
     """Ouvre un essai MLflow avec les etiquettes du projet.
@@ -58,6 +118,7 @@ def essai(etude, notebook, nom=None, graine=None, **etiquettes):
     Appele a l'interieur d'un autre essai, il cree un essai enfant
     (par exemple un bloc de validation croisee) : rien a faire de plus.
     """
+    _assurer_connexion()
     if etude not in ETUDES:
         raise ValueError(f"etude inconnue : {etude!r}. Choisir parmi {sorted(ETUDES)} "
                          f"ou l'ajouter dans ETUDES.")
@@ -86,6 +147,7 @@ def retenir(run_id):
     L'ancien essai retenu de la meme etude passe en `remplace` : il reste
     consultable, mais ne sera plus affiche.
     """
+    _assurer_connexion()
     client = MlflowClient()
     etude = client.get_run(run_id).data.tags.get("etude")
     if not etude:
@@ -104,6 +166,7 @@ def retenir(run_id):
 
 def abandonner(run_id, raison):
     """Marque un essai rate ou sans suite, avec la raison (on la retrouvera)."""
+    _assurer_connexion()
     client = MlflowClient()
     client.set_tag(run_id, "statut", "abandonne")
     client.set_tag(run_id, "raison", raison)
@@ -111,6 +174,7 @@ def abandonner(run_id, raison):
 
 def tableau(etude=None, avec_enfants=False, n=40):
     """Vue d'ensemble : un essai par ligne, le plus recent en haut."""
+    _assurer_connexion()
     filtre = "tags.etude != ''"
     if etude:
         filtre = f"tags.etude = '{etude}'"
@@ -143,11 +207,12 @@ def resultats(etude, dossier=None):
 
     Renvoie un dict : metrics, fichiers (chemins locaux), source (texte a citer).
     """
+    _assurer_connexion()
     df = mlflow.search_runs(
         experiment_names=[EXPERIENCE],
         filter_string=f"tags.etude = '{etude}' and tags.statut = 'retenu'")
     if df.empty:
-        raise LookupError(f"aucun essai retenu pour l'etude {etude!r} : "
+        raise LookupError(f"aucun essai retenu pour l'etude {etude!r} sur {_serveur()} : "
                           f"lancer suivi.retenir(run_id) apres verification")
     if len(df) > 1:
         raise LookupError(f"{len(df)} essais retenus pour {etude!r} : il en faut un seul")
@@ -159,5 +224,5 @@ def resultats(etude, dossier=None):
     metrics = {c.removeprefix("metrics."): ligne[c]
                for c in df.columns if c.startswith("metrics.") and pd.notna(ligne[c])}
     source = (f"essai {run_id[:8]} du {ligne['start_time']:%d/%m/%Y}, "
-              f"commit {ligne.get('tags.git_commit', '?')}")
+              f"commit {ligne.get('tags.git_commit', '?')}, serveur {_serveur()}")
     return {"metrics": metrics, "fichiers": fichiers, "source": source, "run_id": run_id}

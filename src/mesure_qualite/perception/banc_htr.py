@@ -5,15 +5,20 @@ Un meme protocole pour tous les modeles : memes lignes, memes blocs, memes mesur
 - PyLaia (modeles Teklia) : lance dans son propre environnement (~/work/laia-env),
   par fichiers de configuration YAML.
 - TrOCR (Hugging Face) : charge dans le noyau du projet.
+- TeleOCR : lance dans son propre environnement (/tmp/env-teleocr, transformers 4.x),
+  dans un processus separe, a une revision du code figee et relue.
 
 Les lignes sont preparees une fois par le notebook 05 (cellule d'export) dans
 ~/work/banc-htr/donnees : images/<id>.png et lignes.csv (id, cle, champ, texte, bloc).
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 import time
 import unicodedata
 from pathlib import Path
@@ -445,53 +450,154 @@ def trocr_ajuster(source: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.
 
 
 # --------------------------------------------------------------------------- TeleOCR
+#
+# TeleOCR est ecrit pour transformers 4.x. Sous transformers 5 (le noyau du projet), son code
+# echoue (RoPE "default"), puis, une fois contourne, charge le modele de langue SANS ses poids,
+# sans aucun message : il lirait n'importe quoi. Il tourne donc dans son propre environnement
+# (/tmp/env-teleocr), dans un processus qui charge le modele une fois puis repond aux lectures.
+# trust_remote_code execute le code du depot : il est fige a TELEOCR_REVISION, relue.
 
-TELEOCR_DEPOTS = ["XingChen-AGI/TeleOCR", "StarDoc-AI/TeleOCR"]
+TELEOCR_DEPOT = "XingChen-AGI/TeleOCR"
+TELEOCR_DEPOTS = [TELEOCR_DEPOT]                                  # compatibilite avec l'ancien appel
+TELEOCR_REVISION = "e92585356c0d0b7b7a65938f3da035c6593cc9a6"     # code relu : ne pas changer sans relire
+TELEOCR_ENV = Path("/tmp/env-teleocr")
 CONSIGNE_TEXTE = "Please output the text content from the image."
 CONSIGNE_MISE_EN_PAGE = "Analyze the image layout."
 
+_SERVEUR_TELEOCR = r'''
+import json, signal, sys, torch
+signal.signal(signal.SIGINT, signal.SIG_IGN)          # une interruption du notebook ne doit pas l'arreter
+from PIL import Image
+from transformers import AutoProcessor, AutoModel
+DEPOT, REV = sys.argv[1], sys.argv[2]
+proc = AutoProcessor.from_pretrained(DEPOT, revision=REV, trust_remote_code=True, use_fast=True)
+model, info = AutoModel.from_pretrained(DEPOT, revision=REV, trust_remote_code=True, dtype=torch.bfloat16,
+                                        attn_implementation="sdpa", output_loading_info=True)
+model = model.to("cuda" if torch.cuda.is_available() else "cpu").eval()
+manquants = [k for k in info["missing_keys"] if "lm_head" not in k]
+if manquants or info["mismatched_keys"]:
+    print("@@" + json.dumps({"erreur": f"poids incomplets : {manquants[:3]} {info['mismatched_keys'][:2]}"}),
+          flush=True)
+    sys.exit(2)
+print("@@" + json.dumps({"pret": True}), flush=True)
+for ligne in sys.stdin:
+    d = json.loads(ligne)
+    try:
+        im = Image.open(d["chemin"]).convert("RGB")
+        if d.get("taille"):
+            im = im.resize((d["taille"], d["taille"]), Image.BICUBIC)
+        msgs = [{"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": d["consigne"]}]}]
+        invite = proc.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+        e = proc(text=[invite], images=[im], padding=True, return_tensors="pt").to(device=model.device,
+                                                                                    dtype=model.dtype)
+        with torch.no_grad():
+            out = model.generate(**e, use_cache=True, max_new_tokens=d["max_jetons"], do_sample=False)
+        ids = out.cpu().tolist()[0][len(e.input_ids[0]):]
+        txt = proc.batch_decode([ids], skip_special_tokens=True, clean_up_tokenization_spaces=False)[0].strip()
+        print("@@" + json.dumps({"texte": txt}, ensure_ascii=False), flush=True)
+    except Exception as ex:
+        print("@@" + json.dumps({"erreur": f"{type(ex).__name__}: {ex}"[:300]}), flush=True)
+'''
 
-def teleocr_charger(depots=TELEOCR_DEPOTS):
-    """Charge TeleOCR (modele vision-langage d'analyse de documents, ~1,2 G parametres).
 
-    ATTENTION : trust_remote_code=True execute du code fourni par le depot du modele.
-    A faire valider avant tout usage sur des donnees reelles.
-    """
-    import torch
-    from transformers import AutoModel, AutoProcessor
+def _teleocr_env() -> Path:
+    """Cree /tmp/env-teleocr (Python gere par uv, transformers 4.x) s'il est absent ou casse."""
+    py = TELEOCR_ENV / "bin" / "python"
+    if py.exists() and subprocess.run([str(py), "-c", "import torch, transformers"],
+                                      capture_output=True).returncode == 0:
+        return py
+    env = {**os.environ, "UV_CACHE_DIR": "/tmp/uv-cache", "UV_LINK_MODE": "copy",
+           "UV_PYTHON_INSTALL_DIR": "/tmp/uv-python"}
+    print("installation de /tmp/env-teleocr (quelques minutes, une fois par session)...", flush=True)
+    for cmd in [f"rm -rf {TELEOCR_ENV}",
+                f"uv venv {TELEOCR_ENV} --python 3.12 --python-preference only-managed",
+                f"uv pip install --python {py} torch torchvision 'transformers>=4.56,<5' accelerate pillow"]:
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, env=env)
+        if r.returncode != 0:
+            raise RuntimeError(f"installation TeleOCR en echec : {r.stderr[-600:]}")
+    return py
 
-    erreurs = []
-    for depot in depots:
+
+class TeleOCRDistant:
+    """TeleOCR dans un processus separe. Joue le role du couple (processeur, modele)."""
+
+    def __init__(self, depot: str = TELEOCR_DEPOT, revision: str = TELEOCR_REVISION):
+        import atexit
+        self._depot, self._revision = depot, revision
+        py = _teleocr_env()
+        script = Path(tempfile.gettempdir()) / "teleocr_serveur.py"
+        script.write_text(_SERVEUR_TELEOCR, encoding="utf-8")
+        self.journal_chemin = Path(tempfile.gettempdir()) / "teleocr_serveur.log"
+        self._journal = open(self.journal_chemin, "w")
+        self.p = subprocess.Popen([str(py), str(script), depot, revision], stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE, stderr=self._journal, text=True,
+                                  start_new_session=True,      # a l'abri des interruptions du notebook
+                                  env={**os.environ, "HF_HOME": os.environ.get("HF_HOME", "/tmp/hf-cache")})
+        rep = self._reponse()
+        if "erreur" in rep:
+            raise RuntimeError(rep["erreur"])
+        self.dossier = Path(tempfile.mkdtemp(prefix="teleocr_"))
+        self.depot = f"{depot}@{revision[:8]}"
+        atexit.register(self.fermer)
+
+    def _reponse(self) -> dict:
+        for ligne in self.p.stdout:
+            if ligne.startswith("@@"):
+                return json.loads(ligne[2:])
+        raise RuntimeError(f"le processus TeleOCR s'est arrete : voir {self.journal_chemin}")
+
+    def _relancer(self, raison: str):
+        print(f"TeleOCR {raison} : relance du processus (~20 s)...", flush=True)
+        self.fermer()
+        self.__init__(self._depot, self._revision)
+
+    def _envoyer(self, demande: dict) -> dict:
+        self.p.stdin.write(json.dumps(demande) + "\n")
+        self.p.stdin.flush()
+        return self._reponse()
+
+    def lire(self, image, consigne: str, max_jetons: int, taille: int | None = None) -> str:
+        """Une lecture. Si le processus s'est arrete (interruption, memoire), il est relance une fois."""
+        if self.p.poll() is not None:
+            self._relancer("arrete")
+        chemin = self.dossier / "entree.png"
+        image.convert("RGB").save(chemin)
+        demande = {"chemin": str(chemin), "consigne": consigne, "max_jetons": max_jetons, "taille": taille}
         try:
-            proc = AutoProcessor.from_pretrained(depot, trust_remote_code=True, use_fast=True)
+            rep = self._envoyer(demande)
+        except (BrokenPipeError, RuntimeError):
+            self._relancer("interrompu en cours de lecture")
+            rep = self._envoyer(demande)
+        if "erreur" in rep:
+            raise RuntimeError(rep["erreur"])
+        return rep["texte"]
+
+    def fermer(self):
+        """Arrete le processus TeleOCR et libere le GPU."""
+        if getattr(self, "p", None) is not None and self.p.poll() is None:
+            self.p.terminate()
             try:
-                modele = AutoModel.from_pretrained(depot, trust_remote_code=True, dtype=torch.bfloat16)
-            except TypeError:
-                modele = AutoModel.from_pretrained(depot, trust_remote_code=True,
-                                                   torch_dtype=torch.bfloat16)
-            appareil = "cuda" if torch.cuda.is_available() else "cpu"
-            return proc, modele.to(appareil).eval(), depot
-        except Exception as e:
-            erreurs.append(f"{depot} : {type(e).__name__}: {str(e)[:300]}")
-    raise RuntimeError("TeleOCR ne se charge pas :\n  " + "\n  ".join(erreurs))
+                self.p.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                self.p.kill()
+
+
+def teleocr_charger(depots=None):
+    """Demarre TeleOCR dans son environnement (transformers 4.x), a la revision relue.
+
+    Renvoie (lecteur, lecteur, depot) : meme forme qu'avant, pour ne rien changer aux notebooks.
+    Le premier appel installe l'environnement si besoin, puis charge le modele (~20 s).
+    Messages du modele : voir lecteur.journal_chemin. Liberer le GPU : lecteur.fermer().
+    Le processus est a l'abri des interruptions du notebook, et se relance seul s'il s'arrete.
+    """
+    lecteur = TeleOCRDistant()
+    return lecteur, lecteur, lecteur.depot
 
 
 def teleocr_lire(proc, modele, image, consigne=CONSIGNE_TEXTE, max_jetons=512, taille=None) -> str:
     """Une image + une consigne -> le texte produit par TeleOCR (methode de sa fiche officielle)."""
-    import torch
-    im = image.convert("RGB")
-    if taille:
-        im = im.resize((taille, taille), Image.BICUBIC)
-    messages = [{"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": consigne}]}]
-    invite = proc.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    entrees = proc(text=[invite], images=[im], padding=True,
-                   return_tensors="pt").to(device=modele.device, dtype=modele.dtype)
-    with torch.no_grad():
-        sortie = modele.generate(**entrees, use_cache=True, max_new_tokens=max_jetons, do_sample=False)
-    ids = sortie.cpu().tolist()[0][len(entrees.input_ids[0]):]
-    return proc.batch_decode([ids], skip_special_tokens=True,
-                             clean_up_tokenization_spaces=False)[0].strip()
+    return proc.lire(image, consigne, max_jetons, taille)
 
 
 def _majuscules(t: str) -> str:
@@ -513,9 +619,15 @@ def extraire_champs(texte: str) -> dict:
 
 
 def boites(texte: str, taille: int = 1036) -> list:
-    """Les rectangles (x1, y1, x2, y2) trouves dans une sortie de mise en page, en fractions
-    de l'image. Hypothese : coordonnees en pixels de l'image redimensionnee (taille x taille),
-    ou deja en fractions si toutes <= 1. A verifier sur les images de controle."""
+    """Les rectangles (x1, y1, x2, y2) d'une sortie de mise en page, en fractions de l'image.
+
+    TeleOCR ecrit <box:x1 y1 x2 y2><label:...> en milliemes de l'image (0 a 1000), quelle que
+    soit la taille de l'image. Les autres formats ([x1, y1, x2, y2] ou (x1, y1), (x2, y2)) sont
+    lus en pixels de l'image redimensionnee (taille x taille), ou en fractions si toutes <= 1."""
+    teleocr = re.findall(r"<box:\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*>", texte)
+    if teleocr:
+        b = [tuple(int(v) / 1000 for v in t) for t in teleocr]
+        return [x for x in b if x[2] > x[0] and x[3] > x[1]]
     nombre = r"(-?\d+(?:\.\d+)?)"
     trouves = re.findall(r"\[\s*" + r"\s*,\s*".join([nombre] * 4) + r"\s*\]", texte)
     trouves += re.findall(r"\(\s*" + nombre + r"\s*,\s*" + nombre + r"\s*\)\s*,\s*\(\s*"
