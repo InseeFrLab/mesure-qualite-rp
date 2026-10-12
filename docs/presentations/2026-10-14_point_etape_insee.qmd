@@ -88,7 +88,13 @@ plt.show()
 Source : essais « complementarite-nb05 » et « cv-trocr-nb05 » (retenus, 05/10/2026), « bi-gemma4-26b-moe » (25/09/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
 :::
 
-Avec le bloc entier, gemma4 lit correctement 84,2 % des noms et prénoms, nettement mieux que les autres approches.
+
+::: {.callout-important}
+
+Avec le bloc entier, gemma4 lit correctement 84,2 % des noms et prénoms, nettement mieux que les autres approches!
+
+:::
+
 
 ## Modèles de lecture manuscrite : sans entraînement
 
@@ -134,7 +140,7 @@ Le modele multimodal reste loin devant !
 
 :::
 
-## Les erreurs qui comptent : celles qu'on ne voit pas (gemma)
+## Modèle Gemma : analyse des erreurs
 
 <div class="stats">
 <div class="stat"><div class="n">84,2 %</div><div class="l">Lu correctement</div><div class="d">nom 82,1 % · prénom 86,2 %</div></div>
@@ -146,14 +152,11 @@ Le modele multimodal reste loin devant !
 Source : essai « bascule-illisible-nb05 » (retenu, 05/10/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
 :::
 
-Si on prenait, pour chaque ligne, la bonne réponse entre gemma4 et TrOCR (« oracle »), on atteindrait 89,3 % contre 84,2 % pour gemma4 seul : le gain possible reste limité, et la règle « illisible » ne gagne aucune ligne.
-
-::: notes
-Quand le modèle dit « illisible », on sait qu'il y a un doute. Quand il invente, rien ne le
-signale. C'est pour moi le chiffre le plus important du projet.
-:::
 
 ## TeleOCR face aux autres modèles multimodaux
+
+**TeleOCR: modèle multimodal *léger***
+
 
 | Modèle | Sur la ligne | Sur le bloc | Erreurs non signalées (bloc) |
 |---|---|---|---|
@@ -182,7 +185,7 @@ Source : essai « teleocr-vs-multimodaux » (07/10/2026), expérience [fiqual-ba
 Source : essai « listes-insee » (08/10/2026), expérience [fiqual-banc-essai](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/#/experiments/1).
 :::
 
-## Les erreurs de gemma, regardées une par une
+## Les erreurs de gemma: comparaison avec fichier divergence
 
 :::: {.columns}
 
@@ -238,15 +241,16 @@ dans MLflow et ne sont pas reprises ici.
 ## Prochaines étapes
 
 1. Vérifier de nouveaux modèles multimodaux (plus gros)
-2. Evaluer / sur la vérité
-3. Finetune sur plus de données (anciens bulletins sur LS3 ?)
-4. Automates :
+2. Tester les autres blocs
+3. Evaluer / sur la vérité
+4. Finetune sur plus de données (anciens bulletins sur LS3 ?) pour améliorer les modèles sobres.
+5. Automates :
     - détection du masque du bulletin
     - transformation des consignes
 
 ## Point d'étape 14/10
 
-* Note de préparation à venir
+* Note préparatoire en cours d'écriture
 * Sujet intégration en production et maintenance
 
 # Ressources
