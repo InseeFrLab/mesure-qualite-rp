@@ -2,4 +2,10 @@
   description: "Résultats depuis le 28 septembre : le pipeline envisagé, la lecture du manuscrit, TeleOCR, la détection des zones et les listes de noms de l'Insee."
   date: "2026-10-12"
   categories: ["manuscrit", "pipeline"]
-  path: presentations/_output/2026-10-14_point_etape_insee.html
+  path: presentations/_output/2026-10-12_point_etape_insee.html
+
+- title: "Point d'étape du 14 octobre : bilan, perspectives, production"
+  description: "Ce qui a été fait depuis le 23 septembre, les perspectives et l'intégration en production : infrastructure, moyens et simplification des modifications annuelles."
+  date: "2026-10-14"
+  categories: ["synthèse", "production"]
+  path: presentations/_output/2026-10-14_point_etape_synthese.html

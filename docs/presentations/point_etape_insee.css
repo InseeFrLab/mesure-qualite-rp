@@ -82,11 +82,11 @@
 .reveal .slides p { margin: 0.5em 0; }
 
 /* --- Liens utiles --- */
-.liens ul { list-style: none; padding: 0; margin: 0.8em 0 0; display: flex; flex-direction: column; gap: 22px; }
+.liens ul { list-style: none; padding: 0; margin: 0.8em 0 0; display: flex; flex-direction: column; gap: 28px; }
 .liens li { font-size: 0.8em; line-height: 1.35; color: var(--pe-encre-douce); display: grid;
             grid-template-columns: 2.2em 1fr; column-gap: 0.4em; align-items: start; }
 .liens li > .fa-solid, .liens li > .fa-brands, .liens li > svg, .liens li > i {
-  color: var(--pe-bleu); font-size: 1.5em; grid-row: 1 / span 2; justify-self: center; }
+  color: var(--pe-bleu); font-size: 1.5em; justify-self: center; }
 .liens a { color: var(--pe-bleu); text-decoration: none; border-bottom: 2px solid var(--pe-trait); }
 .liens a:hover { border-bottom-color: var(--pe-bleu); }
 
@@ -103,3 +103,91 @@
 .reveal .slides .mot.bon { background: #d9efe3; color: #12583a; }
 .reveal .slides .stat.long { flex: 1 1 100%; max-width: none; padding: 16px 22px; }
 .reveal .slides .stat.long .n { font-size: 1.9em; }
+
+/* --- Synthèse du point d'étape --- */
+.reveal .slides .compare table { table-layout: fixed; width: 100%; font-size: 0.5em; }
+.reveal .slides .compare table th, .reveal .slides .compare table td { text-align: left !important; vertical-align: top; }
+.reveal .slides .compare table th:first-child, .reveal .slides .compare table td:first-child { width: 18%; font-weight: 600; }
+
+.reveal .slides .etat { display: inline-block; padding: 0.05em 0.7em; border-radius: 999px; font-size: 0.55em; font-weight: 600; line-height: 1.5; }
+.reveal .slides .etat.fait { background: #d9efe3; color: #12583a; }
+.reveal .slides .etat.test { background: #dcebfb; color: #0f417a; }
+.reveal .slides .etat.afaire { background: #fff1bd; color: #7a4d00; }
+.reveal .slides .etats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 0.4em; text-align: left; }
+
+.reveal .slides .parcours { display: flex; gap: 14px; margin: 1em 0; }
+.reveal .slides .parcours > div { flex: 1 1 0; padding: 18px 16px; background: var(--pe-bleu-clair); border-radius: 12px;
+                                  font-size: 0.62em; line-height: 1.3; text-align: left; color: var(--pe-encre); }
+.reveal .slides .parcours .n { display: block; font-size: 1.9em; font-weight: 700; color: var(--pe-bleu); margin-bottom: 0.15em; }
+
+/* --- Matrice profil x tâche : cases centrées --- */
+.reveal .slides .matrice table th:not(:first-child), .reveal .slides .matrice table td:not(:first-child) { text-align: center !important; font-size: 1.3em; }
+.reveal .slides .matrice table th:not(:first-child) { font-size: 1em; }
+
+
+/* --- Callouts dans le langage du schéma du pipeline ---
+   étape : bleu plein, texte blanc, numéros jaunes (tip simple, et tout callout simple en colonnes)
+   question ouverte : blanc, pointillés jaune foncé (note simple hors colonnes, warning)
+   groupe : bleu pâle, pointillés bleus, éléments en boîtes blanches (callout titré)
+   mesure : jaune plein (important) */
+/* le thème réduit les callouts à 0,7 em avec ce sélecteur : on le reprend pour la taille seulement */
+.reveal .slides section div.callout { font-size: 1.15em; }
+.reveal .slides div.callout {
+  margin: 0.7em 0; padding: 0; border: 0 !important; border-left: 0 !important;
+  border-radius: 14px; box-shadow: none; overflow: hidden; background: #0f417a;
+}
+.reveal .slides div.callout .callout-body { padding: 0; }
+.reveal .slides div.callout .callout-content { padding: 30px 34px; font-weight: 700; line-height: 1.3; color: #fff; }
+.reveal .slides div.callout .callout-content :is(p, li) { color: inherit !important; }
+.reveal .slides div.callout .callout-content p { margin: 0; }
+.reveal .slides div.callout .callout-content strong { color: #ffc300; }
+.reveal .slides div.callout .callout-icon-container { display: none; }
+
+/* Question ouverte */
+.reveal .slides section.slide > div.callout-note.callout-style-simple,
+.reveal .slides div.callout-warning {
+  background: #fff; border: 3px dashed #b87700 !important;
+}
+.reveal .slides section.slide > div.callout-note.callout-style-simple .callout-content,
+.reveal .slides div.callout-warning .callout-content { color: #7a4d00; font-weight: 600; }
+
+/* Groupe titré */
+.reveal .slides div.callout.callout-titled:not(.callout-important) {
+  background: var(--pe-bleu-clair); border: 3px dashed #286ac7 !important; border-radius: 16px;
+}
+.reveal .slides div.callout.callout-titled .callout-title {
+  display: block; background: transparent; border: 0; padding: 18px 24px 0; margin: 0;
+}
+.reveal .slides div.callout.callout-titled .callout-title p { margin: 0; text-align: center; color: #0f417a !important; font-size: 1.05em; }
+.reveal .slides div.callout.callout-titled:not(.callout-important) .callout-content { padding: 14px 24px 22px; color: #0c3a5a; }
+.reveal .slides div.callout.callout-titled ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.reveal .slides div.callout.callout-titled li::before { content: none !important; display: none !important; }
+.reveal .slides div.callout.callout-titled li::marker { content: none; }
+.reveal .slides div.callout.callout-titled li {
+  margin: 0; padding: 0.55em 0.8em; background: #fff; border: 3px solid #286ac7; border-radius: 12px;
+  font-size: 0.9em; text-align: center;
+}
+
+/* Mesure */
+.reveal .slides div.callout-important { background: #ffc300; border: 3px solid #d98c07 !important; }
+.reveal .slides div.callout-important .callout-title { padding: 22px 34px 0; background: transparent; border: 0; }
+.reveal .slides div.callout-important .callout-title p { margin: 0; font-size: 0.6em; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; color: #7a4d00 !important; }
+.reveal .slides div.callout-important .callout-content { padding-top: 6px; color: #1b2a3a; }
+
+/* Colonnes : blocs de même hauteur */
+.reveal .slides .columns { display: flex; gap: 32px; align-items: stretch; }
+.reveal .slides .columns > .column { flex: 1 1 0; width: auto !important; min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+.reveal .slides .columns > .column > div.callout { flex: 1; margin: 0; display: flex; }
+.reveal .slides .columns > .column > div.callout > .callout-body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.reveal .slides .columns > .column > div.callout.callout-titled > .callout-body { justify-content: flex-start; }
+/* Quarto enveloppe les callouts titrés dans un div[title] */
+.reveal .slides .columns > .column > div[title] { flex: 1; display: flex; flex-direction: column; }
+.reveal .slides .columns > .column > div[title] > div.callout { flex: 1; margin: 0; }
+
+/* Intégration en production : trois mots clés */
+.reveal .slides .cles { margin-top: 1.4em; }
+.reveal .slides .cles div.callout .callout-content { padding: 90px 20px; text-align: center; font-size: 1.3em; }
+
+/* Texte courant */
+.reveal .slides section.slide > p, .reveal .slides section.slide > ul, .reveal .slides section.slide > ol { font-size: 1.4em; }
+.reveal .slides section.slide > ul li, .reveal .slides section.slide > ol li { margin: 0.4em 0; }
