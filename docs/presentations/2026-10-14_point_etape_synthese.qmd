@@ -1,0 +1,216 @@
+---
+title: "PMQ par IA"
+subtitle: "point d'étape du 14 octobre 2026"
+author: ""
+date: "2026-10-14"
+lang: fr
+format:
+  insee-clair-revealjs:
+    css: point_etape_insee.css
+    footer: ""
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+# Où en est on
+
+## Le pipeline et son état
+
+{{< include ../_includes/pipeline.html >}}
+
+::: {.etats}
+<div><span class="etat test">testé sur le bulletin</span></div>
+<div><span class="etat test">testé : nom, prénom, une question à cases</span></div>
+<div><span class="etat afaire">à faire : la règle est dans un notebook</span></div>
+<div><span class="etat afaire">à faire</span></div>
+:::
+
+
+## Les chiffres à retenir
+
+<div class="stats">
+<div class="stat"><div class="n">84,2 %</div><div class="l">de noms et prénoms lus correctement</div><div class="d">gemma4 sur le bloc, contre la saisie du PMQ</div></div>
+<div class="stat"><div class="n">88,1 %</div><div class="l">contre la référence arbitrée</div><div class="d">contre 83,9 % avec la seule saisie du PMQ (même essai)</div></div>
+<div class="stat"><div class="n">60,3 %</div><div class="l">avec un petit modèle entraîné chez nous</div><div class="d">TrOCR-base, validation croisée</div></div>
+<div class="stat alerte"><div class="n">14,9 %</div><div class="l">d'erreurs sans signal d'alerte</div><div class="d">gemma4 répond rarement « illisible » (0,9 %)</div></div>
+</div>
+
+::: {.callout-tip appearance="simple" icon="false"}
+L'approche modele multimodal sur bloc semble donner les meilleurs résultats
+:::
+
+## Aller plus loin dans l'expérimentation : finetuning
+
+::: {.callout-tip appearance="simple" icon="false"}
+Tester le finetuning sur plus d'images (réelles)
+:::
+
+::: {.callout-note appearance="simple" icon="false"}
+- Sur ls3 ?
+- Peut on accéder aux anciennes campagnes?
+- Peut on disposer d'un GPU (16GB suffit) ?
+:::
+
+## Aller plus loin dans l'expérimentation : Gros modèles
+
+::: {.callout-tip appearance="simple" icon="false"}
+Tester avec des modèles frontier (type GLM-OCR ou autres)
+:::
+
+::: {.callout-note appearance="simple" icon="false"}
+- utilisation de eden.ai pour le temps de l'expérimentation
+- possibilité d'extension de modèle sur Again (preprod/ls3)
+:::
+
+
+# Mise en production du pipeline
+
+## Besoins
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.callout-note title="Si modèle multimodal"}
+* Environnement d'execution python
+* Acces modele LLM
+* Acces aux images
+* orchestrateur de workflow
+:::
+:::
+
+::: {.column width="50%"}
+::: {.callout-tip title="Si modèle finetuné"}
+* Environnement d'execution python
+* avec GPU (pour finetuning + inférence)
+* Acces aux images
+* orchestrateur de workflow
+:::
+:::
+
+::::
+
+## Quel environnement ? quelle fréquence ?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.callout-note appearance="simple" icon="false"}
+"Prod" ou "Self"
+:::
+:::
+
+::: {.column width="50%"}
+::: {.callout-tip appearance="simple" icon="false"}
+1 LS par semaine ? Quel taille?
+:::
+:::
+
+::::
+
+## Métriques actuelles
+
+Temps déjà mesurés sur le service actuel (ce ne sont pas des prévisions pour LS3) :
+
+<div class="stats">
+<div class="stat"><div class="n">0,57 s</div><div class="l">par bulletin</div><div class="d">gemma4 sur le bloc</div></div>
+<div class="stat"><div class="n">1,3 min</div><div class="l">pour 335 lignes</div><div class="d">TrOCR-base</div></div>
+</div>
+
+## Architecture et Sécurité
+
+::: {.callout-warning appearance="simple" icon="false"}
+- Besoin d'homologation ?
+- Vérification de sécurité ?
+:::
+
+
+## Simplifier les modifications du questionnaire
+
+
+::: {.callout-important}
+
+Une nouvelle question ou une nouvelle modalité ne devrait demander que de simple modification de fichiers
+
+:::
+
+Mise à disposition d'automate pour :
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.callout-note appearance="simple" icon="false"}
+Calculer la disposition du formulaire et les masques pour les contours (avec un llm ?)
+:::
+:::
+
+::: {.column width="50%"}
+::: {.callout-tip appearance="simple" icon="false"}
+Traduire les consignes de façon compréhensible pour le pipeline (avec un llm ?)
+:::
+:::
+
+::::
+
+
+# Moyens humains
+
+## Intégration en production
+
+:::: {.columns .cles}
+
+::: {.column width="33%"}
+::: {.callout-note appearance="simple" icon="false"}
+SERN ?
+:::
+:::
+
+::: {.column width="33%"}
+::: {.callout-note appearance="simple" icon="false"}
+Architecture ?
+:::
+:::
+
+::: {.column width="33%"}
+::: {.callout-note appearance="simple" icon="false"}
+Equipe de maintenance ?
+:::
+:::
+
+::::
+
+::: {.callout-note appearance="simple" icon="false"}
+SSPLab en accompagnement / formation
+:::
+
+
+## Compétences requises
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.callout-note appearance="simple" icon="false"}
+**1.** Qui pour executer le pipeline ?
+:::
+
+::: {.callout-note appearance="simple" icon="false"}
+**3.** Qui pour réévaluer le pipeline d'une année sur l'autre ?
+:::
+:::
+
+::: {.column width="50%"}
+::: {.callout-note appearance="simple" icon="false"}
+**2.** Qui pour maintenir le code du pipeline (changements annuels/ upgrade des librairies/ adaptations) ?
+:::
+
+::: {.callout-note appearance="simple" icon="false"}
+**4.** Qui pour maintenir la plateforme llm ?
+:::
+:::
+
+::::
+
+::: {.callout-note appearance="simple" icon="false"}
+Besoin d'un profil Datascientist
+:::
