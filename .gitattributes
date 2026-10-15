@@ -1,4 +1,3 @@
 *.ipynb filter=nbstripout
 *.zpln filter=nbstripout
 *.ipynb diff=ipynb
-notebooks/12_cv_et_complementarite.ipynb -filter
