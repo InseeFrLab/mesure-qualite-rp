@@ -1,17 +1,18 @@
+- title: "Point suivi 26/10/2026"
+  description: "Ce qui est nouveau depuis le 14 octobre : le masque du bulletin calculé automatiquement à partir du PDF vierge, l'adresse du lieu de travail, les gros modèles via Eden AI et les adresses sans référence."
+  date: "2026-10-26"
+  categories: ["Manuscrit", "gabarit","adresse"]
+  path: presentations/2026-10-26_point_etape_insee.html
+
 - title: "Point de suivi 12/10/2026"
   description: "Résultats depuis le 28 septembre : le pipeline envisagé, la lecture du manuscrit, TeleOCR, la détection des zones et les listes de noms de l'Insee."
   date: "2026-10-12"
   categories: ["manuscrit", "pipeline"]
-  path: presentations/_output/2026-10-12_point_etape_insee.html
+  path: presentations/2026-10-12_point_etape_insee.html
 
 - title: "Point d'étape du 14 octobre : bilan, perspectives, production"
   description: "Ce qui a été fait depuis le 23 septembre, les perspectives et l'intégration en production : infrastructure, moyens et simplification des modifications annuelles."
   date: "2026-10-14"
   categories: ["synthèse", "production"]
-  path: presentations/_output/2026-10-14_point_etape_synthese.html
-  
-- title: "Point suivi 26/10/2026"
-  description: "Ce qui est nouveau depuis le 14 octobre : le masque du bulletin calculé automatiquement à partir du PDF vierge, l'adresse du lieu de travail, les gros modèles via Eden AI et les adresses sans référence."
-  date: "2026-10-26"
-  categories: ["Manuscrit", "gabarit","adresse"]
-  path: presentations/_output/2026-10-26_point_etape_insee.html
+  path: presentations/2026-10-14_point_etape_synthese.html
+

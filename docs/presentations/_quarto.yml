@@ -1,9 +1,0 @@
-project:
-  type: default
-  output-dir: _output
-  render:
-    - 2026-10-14_point_etape_insee.qmd
-    - 2026-10-14_point_etape_synthese.qmd
-    - 2026-10-26_point_etape_insee.qmd
-
-lang: fr
