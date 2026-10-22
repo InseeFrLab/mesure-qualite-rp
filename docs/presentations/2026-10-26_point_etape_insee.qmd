@@ -1,0 +1,233 @@
+---
+title: "PMQ par IA"
+subtitle: "point de suivi 26/10/2026"
+author: ""
+date: "2026-10-26"
+lang: fr
+format:
+  insee-clair-revealjs:
+    css: point_etape_insee.css
+    footer: ""
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+# Où en est-on ?
+
+## Rappel de l'objectif
+
+::: {.callout-important}
+
+produire le Fiqual de façon automatique, et faire **au moins aussi bien que la saisie actuelle du PMQ** (en termes de taux d'erreurs)
+
+:::
+
+## Retour sur le point d'étape du 14/10
+
+* gemma4 sur le bloc : **84,2 %** de noms et prénoms lus correctement ➡️ approche retenue
+* Deux pistes à creuser : les **gros modèles** (via Eden AI pendant l'expérimentation) et les **automates** (masque du bulletin, consignes)
+* Objectif pour la production : un nouveau questionnaire ne doit demander **que des modifications de fichiers**
+
+# Ce qui est nouveau depuis le 14/10
+
+## Le pipeline et son état
+
+{{< include ../_includes/pipeline.html >}}
+
+::: {.etats}
+<div><span class="etat fait">automatisé : masque calculé à partir du PDF vierge</span></div>
+<div><span class="etat test">testé : nom, prénom, une question à cases ; adresse en cours</span></div>
+<div><span class="etat afaire">à faire : la règle est dans un notebook</span></div>
+<div><span class="etat afaire">à faire</span></div>
+:::
+
+## Le masque du bulletin, calculé à partir du PDF vierge
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Avant** : un cadre cherché par essais, à refaire pour chaque question et chaque millésime.
+
+**Maintenant** : on lit le **PDF de l'imprimeur**. Les cadres, les numéros de questions, les cases et les noms de variables y sont dessinés à leur position exacte.
+
+- chaque scan est **aligné** sur la page vierge
+- chaque question est ensuite découpée **au même endroit** sur tous les bulletins
+:::
+
+::: {.column width="50%"}
+<div class="stats">
+<div class="stat long"><div class="n">32 sur 32</div><div class="l">questions du BI 2025 retrouvées dans le PDF</div><div class="d">avec leurs cases, leurs champs et leurs variables (NUMVOI, PROF…)</div></div>
+<div class="stat long"><div class="n">&lt; 0,5 mm</div><div class="l">d'écart après alignement</div><div class="d">scans simulés : papier penché, gris, noir et blanc, de 120 à 300 dpi</div></div>
+<div class="stat long"><div class="n">5</div><div class="l">questionnaires traités de la même façon</div><div class="d">BI 2025, FL 2027, FLR 2027, FLRM 2022, FLAG 2022</div></div>
+</div>
+:::
+
+::::
+
+::: {.source}
+Source : notebook « gabarit_formulaire », tests sur scans simulés à partir des PDF vierges.
+:::
+
+::: notes
+Les découpes sont déposées dans data/decoupes/, une par question, avec un index : les autres notebooks les
+réutilisent directement. gemma4 donne le thème de chaque bloc et vérifie que chaque découpe contient la question entière.
+:::
+
+## Un nouveau millésime : déposer le PDF, relancer
+
+::: {.callout-important}
+
+Nouveau questionnaire ➡️ déposer son **PDF vierge** et relancer le notebook : le masque se refait **sans rien saisir**
+
+:::
+
+Exemple : feuille de logement, de 2022 à 2027, comparée automatiquement
+
+<div class="stats">
+<div class="stat"><div class="n">6</div><div class="l">questions ajoutées</div></div>
+<div class="stat"><div class="n">4</div><div class="l">questions supprimées</div></div>
+<div class="stat"><div class="n">10</div><div class="l">questions renumérotées</div><div class="d">retrouvées par leur intitulé ou leur variable</div></div>
+</div>
+
+::: notes
+Les notebooks choisissent leurs découpes par variable ou par libellé, et non par numéro de question : une question
+renumérotée d'une année sur l'autre est retrouvée sans modification.
+:::
+
+## Un nouveau bloc : l'adresse du lieu de travail
+
+**Question 23** du bulletin individuel : seule adresse ressaisie dans le Fiqual (NUMVOILT, BISTERLT, TYPEVOILT, NOMVOILT).
+
+| Difficulté | Exemple | Traitement |
+|---|---|---|
+| plusieurs morceaux | numéro, indice, type et nom de voie | jugés séparément et ensemble (« numéro + voie ») |
+| abréviations | BD / BOULEVARD, RN / Route Nationale | ramenées à une seule forme des deux côtés |
+| chiffres proches à la main | 1 et 7, 4 et 9 | consigne dédiée |
+| indice | 12 BIS, 3 TER | jugé avec le numéro |
+
+Comparaison à la **référence arbitrée** par le SeRN, comme pour les noms et prénoms.
+
+::: {.callout-tip appearance="simple" icon="false"}
+Passage complet fait sur RG25 : découpe de la question par le masque du bulletin, lecture par les modèles, résultats enregistrés dans MLflow (essai adresse-lieu-travail-vs-pmq-RG25)
+:::
+
+## Les gros modèles, via Eden AI
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.callout-note title="Modèles comparés à gemma4"}
+* fermés de référence : Gemini Pro, GPT, Claude Opus
+* ouverts plus gros : Qwen-VL, Pixtral
+* rapides et économiques : Gemini Flash, Claude Sonnet
+:::
+:::
+
+::: {.column width="50%"}
+::: {.callout-tip title="Garde-fous"}
+* essai sur quelques documents avant toute dépense
+* plafond de dépense fixé à 60 $
+* documents fictifs uniquement
+:::
+:::
+
+::::
+
+::: {.callout-warning appearance="simple" icon="false"}
+Lesquels méritent une installation en interne (preprod / LS3) ?
+:::
+
+## Les adresses sans référence : logement et domicile
+
+Ni le logement ni le domicile ne sont ressaisis dans le Fiqual : chaque lecture est contrôlée autrement.
+
+:::: {.columns}
+
+::: {.column width="33%"}
+::: {.callout-note appearance="simple" icon="false"}
+**1.** La voie et le numéro existent-ils dans la Base Adresse Nationale de la commune ?
+:::
+:::
+
+::: {.column width="33%"}
+::: {.callout-note appearance="simple" icon="false"}
+**2.** Les autres modèles lisent-ils la même adresse ?
+:::
+:::
+
+::: {.column width="33%"}
+::: {.callout-note appearance="simple" icon="false"}
+**3.** Le domicile correspond-il à un logement du même district ?
+:::
+:::
+
+::::
+
+# Le point du lundi, automatisé
+
+## Un notebook macro pour préparer le point
+
+::: {.callout-important}
+
+Le point du lundi se prépare **sans recopier les chiffres à la main** : le notebook lit MLflow, puis écrit la présentation
+
+:::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Ce qu'il fait**
+
+- lit les derniers essais dans MLflow (mesures, paramètres, fichiers de résultats)
+- compare les chiffres clés à ceux du point précédent
+- écrit le fichier `point_AAAA-MM-JJ.qmd`, dans le même format que les points précédents
+- lance le rendu Quarto, si Quarto est installé
+- enregistre le point lui-même dans MLflow, pour garder la trace
+
+Le lead n'a qu'à vérifier le rendu, puis ajouter la ligne dans `_quarto.yml` et le bloc dans `index.yml`.
+:::
+
+::: {.column width="50%"}
+<div class="stats">
+<div class="stat long"><div class="n">1 notebook</div><div class="l">pour tout le point</div><div class="d">on change la date et le titre dans les réglages, le reste se fait seul</div></div>
+<div class="stat long"><div class="n">0 chiffre recopié</div><div class="l">à la main</div><div class="d">les chiffres viennent de MLflow</div></div>
+</div>
+:::
+
+::::
+
+::: {.etats}
+<div><span class="etat test">testé sur un service MLflow simulé</span></div>
+<div><span class="etat afaire">à faire : premier passage sur les vrais services avant le prochain point</span></div>
+:::
+
+::: {.source}
+Source : notebook « point_lundi » (tpoint), tests sur des services simulés.
+:::
+
+::: notes
+Le notebook ne modifie aucune présentation existante : il crée un nouveau fichier. La ligne ajoutée à `_quarto.yml` et le bloc ajouté à `index.yml` restent des gestes manuels, pour que le lead garde la main sur ce qui est publié.
+:::
+
+# La suite
+
+## Prochaines étapes
+
+1. Adresse du lieu de travail : analyser les erreurs de l'essai RG25 (page HTML des erreurs dans MLflow)
+2. Étendre le masque aux scans de la feuille de logement
+3. Tester les autres blocs : profession, date de naissance
+4. Gros modèles : choisir ceux à installer en interne
+5. Finetuning sur plus de données (anciens bulletins sur LS3 ?)
+6. Notebook macro : premier passage sur le vrai serveur MLflow
+
+# Ressources
+
+## Liens utiles
+
+::: {.liens}
+- {{< fa brands github >}} [**Dépôt GitHub**](https://github.com/InseeFrLab/mesure-qualite-rp)<br>InseeFrLab/mesure-qualite-rp : code, notebooks, présentation
+- {{< fa chart-line >}} [**MLflow du projet**](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/)<br>tous les essais : paramètres, métriques, fichiers de résultats
+- {{< fa cloud >}} [**SSP Cloud**](https://datalab.sspcloud.fr/)<br>projet projet-mesure-qualite-rp : données, services, secrets
+:::
