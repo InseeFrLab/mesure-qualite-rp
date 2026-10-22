@@ -56,12 +56,11 @@ séparément mesurables, ce qu'une architecture monolithique ne permet pas.
 # Site et présentations
 
 Le site (`docs/`) présente les objectifs, le pipeline, les méthodes et les résultats. Les
-diaporamas (`docs/presentations/`) sont un sous-projet Quarto séparé, dans la charte Insee.
+diaporamas (`docs/presentations/`) font partie du même projet Quarto, dans la charte Insee.
 
     bash scripts/installer_extensions.sh        # charte Insee + icônes (44 Mo, non versionnées)
-    quarto render docs/presentations            # d'abord les diaporamas
-    quarto render docs                          # puis le site, dans docs/_site
-    quarto preview docs                         # pour travailler une page
+    quarto render docs                          # site et diaporamas, dans docs/_site
+    quarto preview docs                         # travail en direct : les .qmd (diaporamas compris) sont rendus à la modification
 
 Les liens vers les expériences de l'instance MLflow du projet (`fiqual-banc-essai` = 1, `fiqual-typl` = 59)
 sont dans `docs/_variables.yml` ; le diaporama a les siens écrits en clair.

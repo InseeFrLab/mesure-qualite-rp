@@ -1,6 +1,6 @@
 name: Site
 
-# Rend les présentations puis le site, et les publie sur GitHub Pages.
+# Rend le site (présentations comprises), et les publie sur GitHub Pages.
 # Aucun secret : les chiffres sont écrits dans les pages.
 on:
   push:
@@ -38,9 +38,6 @@ jobs:
 
       - name: Extensions Quarto (charte Insee, icônes)
         run: bash scripts/installer_extensions.sh
-
-      - name: Rendu des présentations
-        run: quarto render docs/presentations
 
       - name: Rendu du site
         run: quarto render docs
