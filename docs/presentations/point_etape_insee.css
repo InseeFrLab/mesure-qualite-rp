@@ -10,6 +10,11 @@
   --pe-encre-douce: #4a5b6d;
 }
 
+/* --- Taille de base du texte (thème : 40px), réduite pour que les diapos chargées tiennent --- */
+.reveal {
+  --r-main-font-size: 34px;
+}
+
 /* --- Tableaux : lisibles de loin, chiffres alignés --- */
 .reveal .slides table {
   border-collapse: separate;
