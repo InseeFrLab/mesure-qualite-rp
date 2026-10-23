@@ -191,3 +191,15 @@
 /* Texte courant */
 .reveal .slides section.slide > p, .reveal .slides section.slide > ul, .reveal .slides section.slide > ol { font-size: 1.4em; }
 .reveal .slides section.slide > ul li, .reveal .slides section.slide > ol li { margin: 0.4em 0; }
+
+/* --- Fond des diapos de contenu : quarts de cercle pâlis en haut à droite pour la lisibilité --- */
+.reveal .slide-background[class*="backgroundStandard_"] .slide-background-content::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40%;
+  height: 75%;
+  background: rgba(255, 255, 255, 0.85);  /* 0 = cercles intacts, 1 = effacés */
+  pointer-events: none;
+}
