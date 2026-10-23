@@ -88,10 +88,9 @@
 
 /* --- Liens utiles --- */
 .liens ul { list-style: none; padding: 0; margin: 0.8em 0 0; display: flex; flex-direction: column; gap: 28px; }
-.liens li { font-size: 0.8em; line-height: 1.35; color: var(--pe-encre-douce); display: grid;
-            grid-template-columns: 2.2em 1fr; column-gap: 0.4em; align-items: start; }
+.liens li { font-size: 0.8em; line-height: 1.35; color: var(--pe-encre-douce); position: relative; padding-left: 2.6em; }
 .liens li > .fa-solid, .liens li > .fa-brands, .liens li > svg, .liens li > i {
-  color: var(--pe-bleu); font-size: 1.5em; justify-self: center; }
+  color: var(--pe-bleu); font-size: 1.5em; position: absolute; left: 0; top: 0.1em; width: 1.5em; text-align: center; }
 .liens a { color: var(--pe-bleu); text-decoration: none; border-bottom: 2px solid var(--pe-trait); }
 .liens a:hover { border-bottom-color: var(--pe-bleu); }
 
