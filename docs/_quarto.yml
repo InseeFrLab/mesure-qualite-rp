@@ -10,8 +10,7 @@ project:
     - evaluation.qmd
     - presentations.qmd
     - ressources.qmd
-    - presentations/2026-10-12_point_etape_insee.qmd
-    - presentations/2026-10-14_point_etape_synthese.qmd
+    - presentations/*.qmd
   resources:
     - presentations/*.svg
 
