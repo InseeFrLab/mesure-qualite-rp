@@ -235,12 +235,13 @@ Difficultés traitées :
 
 ## Prochaines étapes {.smaller}
 
-1. Adresse du lieu de travail : élargir l'échantillon arbitré (43 adresses aujourd'hui).
-2. Logement et domicile : revoir le rapprochement avec la BAN (communes absentes, forme des adresses).
-3. Masque : réduire la marge des découpes.
-4. Étendre le masque aux scans de la feuille de logement.
-5. Tester les autres blocs : profession, date de naissance.
-6. Gros modèles : installer un modèle en interne, garder ce qui existe déjà en interne, ou ne rien installer.
+1. Ajuster modèle OCR sur LS3
+2. Adresse du lieu de travail : élargir l'échantillon arbitré (43 adresses aujourd'hui).
+3. Logement et domicile : revoir le rapprochement avec la BAN (communes absentes, forme des adresses).
+4. Masque : réduire la marge des découpes.
+5. Étendre le masque aux scans de la feuille de logement.
+6. Tester les autres blocs : profession, date de naissance.
+7. Gros modèles : installer un modèle en interne, garder ce qui existe déjà en interne, ou ne rien installer.
 
 # Ressources
 
