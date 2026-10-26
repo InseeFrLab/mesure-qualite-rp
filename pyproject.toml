@@ -23,6 +23,8 @@ dependencies = [
     "sentencepiece>=0.2.2",
     "protobuf>=6.33.6",
     "accelerate>=1.1.0",
+    "pdfplumber>=0.11.10",
+    "pypdfium2>=5.14.0",
 ]
 
 [project.optional-dependencies]
