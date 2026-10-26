@@ -10,11 +10,23 @@ campagnes:
     fiqual: RP_PMQ_FIQUAL2599.txt
     bie: BIE
     positions: positions/FL_2025.yaml
+    # Etape 1 (decoupage) : formulaire -> gabarit, et fin du nom des scans (..._BI.jpg)
+    decoupage:
+      BI: {gabarit: BI_2025, suffixe: BI}
   RG26:
     racine: data/raw/RG26
     bie: BIE
     divergences: Divergences
     positions: positions/FL_2026.yaml
+
+# Etape 1 du pipeline (decoupage en blocs), chemins dans le bucket.
+#   gabarits : masques construits a partir des PDF vierges (JSON + pages de reference)
+#   decoupes : <decoupes>/<campagne>/<formulaire>/<bloc>/<scan>.jpg et un index CSV
+decoupage:
+  pdf_vierges: documentation/Questionnaires
+  gabarits: data/decoupes/gabarits
+  decoupes: data/decoupes
+  format: jpg
 
 # Zones d'un questionnaire, telles que le prestataire les livre.
 zones:

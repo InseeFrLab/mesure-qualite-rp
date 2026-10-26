@@ -26,6 +26,7 @@ séparément mesurables, ce qu'une architecture monolithique ne permet pas.
 
     src/mesure_qualite/
         io/             lecture du bucket, manifeste des images
+        decoupage/      étape 1 : gabarit du questionnaire, recalage des scans, découpe en blocs
         parsing/        Ficod, Fiqual, divergences, dessins de fichier
         regles/         application du document de consignes
         codification/   communes, pays, nationalités
@@ -36,6 +37,32 @@ séparément mesurables, ce qu'une architecture monolithique ne permet pas.
     configs/            dessins de fichier et positions, par millésime
     tests/              tests unitaires, dont les exemples du document de consignes
     docs/               notes de cadrage et spécifications
+
+## Étape 1 : découpage en blocs
+
+Le masque (gabarit) d'un questionnaire est calculé à partir de son **PDF vierge** :
+positions exactes des cadres, numéros de questions, cases, champs et noms de
+variables. Chaque scan est ensuite recalé sur la page vierge (points ORB, RANSAC,
+transformation affine) puis découpé bloc par bloc. Aucun modèle appris : le résultat
+est déterministe et reproductible. Les chemins viennent de `configs/campagnes.yaml`.
+
+    # gabarit d'une nouvelle version du questionnaire (JSON + pages de référence + image de contrôle)
+    python -m mesure_qualite.decoupage construire --pdf "s3://projet-mesure-qualite-rp/documentation/Questionnaires/2025-imprime-3-BI avec VAR.pdf"
+
+    # découpe des scans d'une campagne (essai sur 20 scans, puis tout ; reprise automatique)
+    python -m mesure_qualite.decoupage decouper --campagne RG25 --formulaire BI --limite 20
+    python -m mesure_qualite.decoupage decouper --campagne RG25 --formulaire BI
+
+    # ce qui a changé entre deux versions d'un questionnaire
+    python -m mesure_qualite.decoupage comparer FLRM_2022 FLR_2027
+
+Sortie : `data/decoupes/<campagne>/<formulaire>/<bloc>/<scan>.jpg` et un index
+`index_<formulaire>_<campagne>.csv` (scan, bloc, chemin, méthode, qualité du recalage),
+point de départ des étapes suivantes. Dans un notebook :
+
+    from mesure_qualite import decoupage as dc
+    r = dc.Recaleur.depuis_dossier("s3://projet-mesure-qualite-rp/data/decoupes/gabarits", "BI_2025")
+    image = dc.decouper_selection(scan, r, variables=["NUMVOI", "NOMVOI"], avec_intitule=True)
 
 ## Règles de contribution
 

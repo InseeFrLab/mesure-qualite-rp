@@ -10,6 +10,7 @@ SOUS_MODULES = [
     "perception",
     "assemblage",
     "evaluation",
+    "decoupage",
 ]
 
 
