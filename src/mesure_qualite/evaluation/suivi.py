@@ -50,6 +50,8 @@ ETUDES = {
     "derive": "indicateurs de derive sans verite terrain",
     "banc-htr": "banc des modeles de lecture : PyLaia, TrOCR, TeleOCR et multimodaux, memes lignes",
     "banc-decoupes": "methode de decoupe des champs (zone fixe, encre, gabarit, detecteurs) x lecteurs ajustes",
+    "lecture-naissance": "date et lieu de naissance : modeles internes et Eden AI, verite arbitree",
+    "lecture-adresse-travail": "adresse du lieu de travail : modeles internes et Eden AI, verite arbitree",
 }
 
 _CONNECTE = False

@@ -92,10 +92,22 @@ def s3(bucket: str, chemin: str) -> str:
     return f"{stockage.PREFIXE_S3}{bucket}/{chemin.strip('/')}"
 
 
+def racine_donnees(configuration: dict | None = None, racine: str | None = None) -> str:
+    """La racine des donnees : le bucket du projet (s3://...), ou un dossier local."""
+    c = configuration or lire_configuration()
+    return racine or s3(c["bucket"], "")
+
+
 def parametres(
-    campagne: str, formulaire: str, configuration: dict | None = None
+    campagne: str,
+    formulaire: str,
+    configuration: dict | None = None,
+    racine: str | None = None,
 ) -> ParametresDecoupage:
-    """Lit configs/campagnes.yaml et renvoie les parametres de decoupage."""
+    """Lit configs/campagnes.yaml et renvoie les parametres de decoupage.
+
+    racine : None = le bucket du projet ; sinon un dossier local de meme organisation
+    (essais hors du SSP Cloud, tests)."""
     c = configuration or lire_configuration()
     general = c.get("decoupage") or {}
     try:
@@ -106,17 +118,20 @@ def parametres(
             f"Pas de decoupage « {formulaire} » pour la campagne « {campagne} » "
             "dans configs/campagnes.yaml (campagnes.<campagne>.decoupage.<formulaire>)."
         ) from e
-    bucket = c["bucket"]
+    base = racine_donnees(c, racine)
+
+    def chemin(relatif: str) -> str:
+        return stockage.joindre(base, relatif.strip("/"))
+
     return ParametresDecoupage(
         campagne=campagne,
         formulaire=formulaire,
         gabarit=form["gabarit"],
-        scans=s3(bucket, form.get("scans", camp["racine"])),
+        scans=chemin(form.get("scans", camp["racine"])),
         suffixe=form.get("suffixe", formulaire),
-        gabarits=s3(bucket, general.get("gabarits", "data/decoupes/gabarits")),
-        sortie=s3(
-            bucket,
-            f"{general.get('decoupes', 'data/decoupes')}/{campagne}/{formulaire}",
+        gabarits=chemin(general.get("gabarits", "data/decoupes/gabarits")),
+        sortie=chemin(
+            f"{general.get('decoupes', 'data/decoupes')}/{campagne}/{formulaire}"
         ),
         format=general.get("format", "jpg"),
     )
@@ -196,19 +211,31 @@ def decouper_campagne(
     duree_max_minutes: float | None = None,
     secours: tuple[str, Secours] | None = None,
     sauvegarde_tous: int = 50,
+    scans: Iterable[str] | None = None,
 ) -> pd.DataFrame:
     """Decoupe tous les scans d'un formulaire et met l'index a jour. Renvoie l'index.
 
     limite            : ne traiter que les N premiers scans (essai) ;
     refaire           : ignorer l'index existant (apres un nouveau gabarit) ;
-    duree_max_minutes : arret propre au-dela ; relancer reprend la ou on s'est arrete."""
+    duree_max_minutes : arret propre au-dela ; relancer reprend la ou on s'est arrete ;
+    scans             : ne traiter que ces scans (ex. les bulletins qui ont une verite).
+
+    Reprise bloc par bloc : un scan est refait seulement s'il lui manque un des blocs
+    demandes (p.blocs). Decouper d'abord q2, puis tout le bulletin, ne perd rien."""
     recaleur = Recaleur.depuis_dossier(p.gabarits, p.gabarit)
     blocs = blocs_a_decouper(
         recaleur.cfg, p.blocs if isinstance(p.blocs, str) else list(p.blocs)
     )
     deja = pd.DataFrame(columns=COLONNES_INDEX) if refaire else lire_index(p)
-    faits = set(deja.loc[deja.gabarit == p.gabarit, "scan"]) if len(deja) else set()
-    tous = scans_du_formulaire(p)
+    voulus = {b["id"] for b in blocs}
+    blocs_faits: dict[str, set] = {}
+    if len(deja):
+        for s_, b_ in deja.loc[deja.gabarit == p.gabarit, ["scan", "bloc"]].itertuples(
+            index=False
+        ):
+            blocs_faits.setdefault(s_, set()).add(b_)
+    faits = {s_ for s_, bs in blocs_faits.items() if voulus <= bs}
+    tous = scans_du_formulaire(p) if scans is None else sorted(set(scans))
     a_faire = [s for s in (tous[:limite] if limite else tous) if s not in faits]
     journal.info(
         "%s %s (%s) : %d blocs par scan, %d scans, %d deja faits, %d a faire",
@@ -253,7 +280,12 @@ def decouper_campagne(
     def sauver() -> pd.DataFrame:
         with verrou:
             nouveaux = pd.DataFrame(lignes, columns=COLONNES_INDEX)
-            anciens = deja[~deja.scan.isin(set(nouveaux.scan))] if len(deja) else deja
+            refaits = set(zip(nouveaux.scan, nouveaux.bloc))
+            anciens = (
+                deja[[(s_, b_) not in refaits for s_, b_ in zip(deja.scan, deja.bloc)]]
+                if len(deja)
+                else deja
+            )
             index = (
                 pd.concat([anciens, nouveaux], ignore_index=True)
                 if len(anciens)

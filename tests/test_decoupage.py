@@ -247,3 +247,34 @@ def test_decouper_campagne_et_reprise(gabarit_bi, tmp_path):
     # reprise : rien a refaire
     index2 = dc.decouper_campagne(p, paralleles=2)
     assert len(index2) == 60
+
+
+@avec_pdf
+def test_reprise_bloc_par_bloc(gabarit_bi, tmp_path):
+    """Decouper d'abord q2 seul, puis tout le bulletin : seuls les blocs manquants
+    sont ajoutes, q2 n'est pas perdu, et une selection de scans est respectee."""
+    from dataclasses import replace
+
+    cfg, refs = gabarit_bi
+    gabarits, scans, sortie = tmp_path / "g", tmp_path / "s", tmp_path / "d"
+    dc.enregistrer(cfg, refs, str(gabarits))
+    for k in range(3):
+        img, _, _ = faux_scan(cfg, refs, angle=0.3 * k, graine=k)
+        stockage.ecrire_image(str(scans / f"6901_00000{k}_BI.jpg"), img)
+    p = ParametresDecoupage(
+        campagne="TEST",
+        formulaire="BI",
+        gabarit="BI_2025",
+        scans=str(scans),
+        suffixe="BI",
+        gabarits=str(gabarits),
+        sortie=str(sortie),
+        blocs=("q2",),
+    )
+    choisis = [str(scans / f"6901_00000{k}_BI.jpg") for k in range(2)]
+    index = dc.decouper_campagne(p, paralleles=2, scans=choisis)
+    assert len(index) == 2 and set(index.bloc) == {"q2"}
+    index = dc.decouper_campagne(
+        replace(p, blocs="toutes"), paralleles=2, scans=choisis
+    )
+    assert len(index) == 2 * 30 and index.duplicated(["scan", "bloc"]).sum() == 0

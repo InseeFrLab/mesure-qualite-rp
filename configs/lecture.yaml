@@ -1,0 +1,67 @@
+# Etape 2 du pipeline : lecture des decoupes par des modeles qui voient les images.
+# Tout ce qui depend du service, du questionnaire ou du sujet etudie vit ici, jamais dans le code.
+
+# Les services qui repondent au format « chat completions » (meme requete pour tous).
+#   cle   : variable d'environnement qui porte la cle (jamais ecrite dans un fichier)
+#   vault : secret Vault ou la lire si la variable est vide ({utilisateur} = dossier Vault personnel)
+fournisseurs:
+  interne:
+    nom: service LLM du SSP Cloud (aucune image ne sort de l'Insee)
+    url: https://llm.lab.sspcloud.fr/api/chat/completions
+    url_modeles: https://llm.lab.sspcloud.fr/api/models
+    cle: OPENAI_API_KEY
+    vault: onyxia-kv/{utilisateur}/LLM
+    paralleles: 4
+  eden:
+    nom: Eden AI (modeles du marche ; les images sortent de l'Insee)
+    url: https://api.edenai.run/v3/chat/completions
+    cle: EDENAI_API_KEY
+    vault: onyxia-kv/{utilisateur}/EDENAI
+    entetes: {x-edenai-metadata: enabled}
+    paralleles: 8
+
+# Ce qu'un modele interne doit savoir faire pour etre essaye : on ecarte d'office ces familles.
+modeles_internes_exclus: [embed, rerank, whisper, tts, audio, guard, bge, e5-]
+
+# Les sujets : quel bloc du gabarit (etape 1) on donne a lire, et quels champs on attend.
+#   variables : noms possibles dans le fichier des divergences du SeRN (expressions regulieres),
+#               qui servent aussi a retrouver la colonne du Fiqual
+#   type      : facon de comparer (entier, mois, texte, lieu, departement, voie)
+#   aide      : ce que la consigne dit du champ
+sujets:
+  naissance:
+    titre: date et lieu de naissance
+    formulaire: BI
+    bloc: q2
+    type_ligne_fiqual: "3"
+    document: un extrait de bulletin individuel
+    cible: la date et le lieu de naissance de la personne
+    champs:
+      JOUR: {variables: ["JNAIS?", "JOUR_?NAIS?"], type: entier, aide: "le jour (1 a 31)"}
+      MOIS: {variables: ["MNAIS?", "MOIS_?NAIS?"], type: mois, aide: "le mois (1 a 12)"}
+      ANNEE: {variables: ["ANAIS?", "ANNEE_?NAIS?", "ANAI4"], type: entier, aide: "l'annee, 4 chiffres"}
+      COMMUNE: {variables: ["CNAIS?", "COMNAIS?", "LNAIS?"], type: lieu, aide: "la commune de naissance"}
+      DEPARTEMENT: {variables: ["DPNAIS?", "DEPNAIS?", "DNAIS?"], type: departement, aide: "le departement (numero ou nom)"}
+      PAYS: {variables: ["PNAIS?", "PAYSNAIS?"], type: lieu, aide: "le pays, seulement si ne(e) a l'etranger"}
+    groupes:
+      DATE: [JOUR, MOIS, ANNEE]
+      LIEU: [COMMUNE, DEPARTEMENT, PAYS]
+  adresse_travail:
+    titre: adresse du lieu de travail
+    formulaire: BI
+    bloc: q23
+    type_ligne_fiqual: "3"
+    document: un extrait de bulletin individuel
+    cible: l'adresse du lieu de travail
+    champs:
+      NUMERO: {variables: ["NUMVOIE?"], type: entier, aide: "le numero dans la voie, chiffres seulement"}
+      INDICE: {variables: ["BISTER", "INDREP"], type: voie, aide: "BIS, TER, QUATER ou une lettre"}
+      TYPE_VOIE: {variables: ["TYPVOIE?"], type: voie, aide: "RUE, AVENUE, BD, CHEMIN... tel qu'il est ecrit"}
+      NOM_VOIE: {variables: ["NOMVOIE?", "LIBVOIE?"], type: voie, aide: "le nom de la voie"}
+      COMPLEMENT: {variables: ["CPLADR", "COMPADR"], type: voie, aide: "batiment, residence, lieu-dit"}
+      COMMUNE: {variables: ["CLT", "COMLT"], type: lieu, aide: "la commune"}
+      DEPARTEMENT: {variables: ["DLT", "DEPLT"], type: departement, aide: "le departement"}
+      PAYS: {variables: ["PLT", "PAYSLT"], type: lieu, aide: "le pays, seulement si a l'etranger"}
+    groupes:
+      VOIE: [NUMERO, INDICE, TYPE_VOIE, NOM_VOIE]
+      LIEU: [COMMUNE, DEPARTEMENT, PAYS]

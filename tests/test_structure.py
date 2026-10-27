@@ -11,6 +11,7 @@ SOUS_MODULES = [
     "assemblage",
     "evaluation",
     "decoupage",
+    "lecture",
 ]
 
 

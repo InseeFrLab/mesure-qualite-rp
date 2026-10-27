@@ -27,6 +27,7 @@ séparément mesurables, ce qu'une architecture monolithique ne permet pas.
     src/mesure_qualite/
         io/             lecture du bucket, manifeste des images
         decoupage/      étape 1 : gabarit du questionnaire, recalage des scans, découpe en blocs
+        lecture/        étape 2 : lecture des blocs par des modèles (internes, Eden AI), jugée contre le SeRN
         parsing/        Ficod, Fiqual, divergences, dessins de fichier
         regles/         application du document de consignes
         codification/   communes, pays, nationalités
@@ -63,6 +64,21 @@ point de départ des étapes suivantes. Dans un notebook :
     from mesure_qualite import decoupage as dc
     r = dc.Recaleur.depuis_dossier("s3://projet-mesure-qualite-rp/data/decoupes/gabarits", "BI_2025")
     image = dc.decouper_selection(scan, r, variables=["NUMVOI", "NOMVOI"], avec_intitule=True)
+
+## Étape 2 : lecture des blocs
+
+Un **sujet** (`configs/lecture.yaml`) dit quel bloc lire et quels champs attendre :
+`naissance` (question 2 : jour, mois, année, commune, département, pays) ou
+`adresse_travail` (question 23). Le même appel sert pour les modèles internes du
+SSP Cloud et pour ceux d'Eden AI ; les lectures sont gardées en cache (jamais
+repayées) et jugées contre la vérité arbitrée par le SeRN.
+
+    from mesure_qualite import lecture as lc
+    s = lc.sujet("naissance")
+    r = lc.lire(lc.Lecteur("gemma4-26b-moe", "interne"), octets_jpeg, lc.consigne(s, "V1"), s.noms_champs)
+
+Le notebook `lecture_modeles_internes_et_eden.ipynb` enchaîne les deux étapes et
+compare les lecteurs (justes, erreurs silencieuses, McNemar, barre du PMQ, coût).
 
 ## Règles de contribution
 
