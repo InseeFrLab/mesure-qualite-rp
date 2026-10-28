@@ -29,6 +29,18 @@ modeles_internes_exclus: [embed, rerank, whisper, tts, audio, guard, bge, e5-]
 #   type      : facon de comparer (entier, mois, texte, lieu, departement, voie)
 #   aide      : ce que la consigne dit du champ
 sujets:
+  identite:
+    titre: nom et prenom
+    formulaire: BI
+    bloc: cadre_nom
+    type_ligne_fiqual: "3"
+    document: un extrait de bulletin individuel
+    cible: le nom et le prenom de la personne
+    champs:
+      NOM: {variables: ["NOM", "NOMI", "NOM_INDIV", "NOMNAIS"], type: texte, aide: "le nom de famille, tel qu'il est ecrit"}
+      PRENOM: {variables: ["PRENOMS?", "PRENOMI", "PRENOM_INDIV"], type: texte, aide: "le ou les prenoms, tels qu'ils sont ecrits"}
+    groupes:
+      IDENTITE: [NOM, PRENOM]
   naissance:
     titre: date et lieu de naissance
     formulaire: BI

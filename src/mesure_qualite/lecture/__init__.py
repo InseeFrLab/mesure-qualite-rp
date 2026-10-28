@@ -8,6 +8,7 @@ images, et juger ces lectures contre la verite arbitree par le SeRN.
     verite      : Fiqual + divergences du SeRN -> la verite, bulletin par bulletin
     comparaison : formes comparables et verdicts (juste, avouee, silencieuse)
     mesures     : tableaux, intervalles de confiance, McNemar, barre du PMQ
+    rapport     : page HTML des erreurs, image de la decoupe a cote de chaque lecture
 
 Exemple :
 
@@ -22,6 +23,7 @@ from .comparaison import comparable, type_erreur, verdict, verdict_groupe
 from .consignes import VERSIONS, consigne
 from .mesures import barre_pmq, comparer, juger, mcnemar, resumer, wilson
 from .modeles import Lecteur, Reponse, cle_api, extraire_json, lire, lister_internes
+from .rapport import comparaison_verite, galerie_erreurs, lignes_en_erreur
 from .sujets import Champ, Sujet, lire_configuration, sujet
 from .verite import (
     cle,
@@ -50,12 +52,15 @@ __all__ = [
     "colonnes_date_par_contenu",
     "colonnes_par_votes",
     "comparable",
+    "comparaison_verite",
     "comparer",
     "consigne",
     "en_long",
     "extraire_json",
     "forme",
+    "galerie_erreurs",
     "juger",
+    "lignes_en_erreur",
     "lire",
     "lire_configuration",
     "lire_divergences",

@@ -39,7 +39,8 @@ def mcnemar(a_ok: pd.Series, b_ok: pd.Series) -> tuple[int, int, float]:
 def juger(
     verite: pd.DataFrame, lectures: dict[str, pd.DataFrame], sujet: Sujet
 ) -> pd.DataFrame:
-    """verite : table_verite(...) ; lectures : nom du lecteur -> (cle, champ, lu).
+    """verite : table_verite(...) ; lectures : nom du lecteur -> (cle, champ, lu), avec
+    eventuellement « lu_brut » (lecture avant mise au format, gardee pour la page HTML).
 
     Seules les lignes lues par TOUS les lecteurs sont gardees : chacun est juge sur les
     memes lignes. Ajoute aussi les lignes des groupes de champs (ex. DATE)."""
@@ -53,6 +54,9 @@ def juger(
             if c in types
         }
         t[f"lu {nom}"] = [lu.get((k, c)) for k, c in zip(t.cle, t.champ)]
+        if "lu_brut" in lus:  # la lecture avant mise au format du Fiqual (saisie.py)
+            brut = dict(zip(zip(lus.cle, lus.champ), lus.lu_brut))
+            t[f"brut {nom}"] = [brut.get((k, c)) for k, c in zip(t.cle, t.champ)]
         t[f"verdict {nom}"] = [
             verdict(x, v) if x is not None else None
             for x, v in zip(t[f"lu {nom}"], t.verite)
