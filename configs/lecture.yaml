@@ -66,14 +66,14 @@ sujets:
     document: un extrait de bulletin individuel
     cible: l'adresse du lieu de travail
     champs:
-      NUMERO: {variables: ["NUMVOIE?"], type: entier, aide: "le numero dans la voie, chiffres seulement"}
-      INDICE: {variables: ["BISTER", "INDREP"], type: voie, aide: "BIS, TER, QUATER ou une lettre"}
-      TYPE_VOIE: {variables: ["TYPVOIE?"], type: voie, aide: "RUE, AVENUE, BD, CHEMIN... tel qu'il est ecrit"}
-      NOM_VOIE: {variables: ["NOMVOIE?", "LIBVOIE?"], type: voie, aide: "le nom de la voie"}
+      NUMERO: {variables: ["NUMVOIE?", "NUMVOIE?LT", "NUMLT"], type: entier, aide: "le numero dans la voie, chiffres seulement"}
+      INDICE: {variables: ["BISTER", "INDREP", "BISTERLT", "INDREPLT"], type: voie, aide: "BIS, TER, QUATER ou une lettre"}
+      TYPE_VOIE: {variables: ["TYPVOIE?", "TYPE?VOIE?LT"], type: voie, aide: "RUE, AVENUE, BD, CHEMIN... tel qu'il est ecrit"}
+      NOM_VOIE: {variables: ["NOMVOIE?", "LIBVOIE?", "NOMVOIE?LT", "LIBVOIE?LT"], type: voie, aide: "le nom de la voie"}
       COMPLEMENT: {variables: ["CPLADR", "COMPADR"], type: voie, aide: "batiment, residence, lieu-dit"}
-      COMMUNE: {variables: ["CLT", "COMLT"], type: lieu, aide: "la commune"}
-      DEPARTEMENT: {variables: ["DLT", "DEPLT"], type: departement, aide: "le departement"}
-      PAYS: {variables: ["PLT", "PAYSLT"], type: lieu, aide: "le pays, seulement si a l'etranger"}
+      COMMUNE: {variables: ["CLT", "COMLT"], type: lieu, aide: "UNIQUEMENT ce qui est ecrit dans la case « Si non, indiquez la commune ou vous travaillez » ; VIDE si cette case est vide, meme si une ville est ecrite dans les lignes d'adresse au-dessus"}
+      DEPARTEMENT: {variables: ["DLT", "DEPLT"], type: departement, aide: "le numero ecrit dans la case « departement », en bas"}
+      PAYS: {variables: ["PLT", "PAYSLT"], type: lieu, aide: "ce qui est ecrit dans la case « pays pour l'etranger » ; VIDE sinon"}
     groupes:
       VOIE: [NUMERO, INDICE, TYPE_VOIE, NOM_VOIE]
       LIEU: [COMMUNE, DEPARTEMENT, PAYS]

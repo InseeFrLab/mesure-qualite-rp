@@ -12,7 +12,14 @@ import json
 
 from .sujets import Sujet
 
-VERSIONS = {"V0": "simple", "V1": "detaillee"}
+VERSIONS = {"V0": "simple", "V1": "detaillee", "V2": "detaillee + departement en entier"}
+
+# V2 : une seule regle pour tous les departements, metropole et outre-mer
+_DEPARTEMENT_V2 = (
+    "DEPARTEMENT : recopie le numero EN ENTIER, de la meme facon partout : 2 chiffres en "
+    "metropole (01 a 95, 2A, 2B), 3 chiffres en outre-mer (971, 972, 973, 974, 976) ; "
+    "un numero qui commence par 97 a toujours 3 chiffres"
+)
 
 _REGLES_COMMUNES = """Regles :
 - Recopie seulement l'ecriture manuscrite, pas les libelles ni les exemples imprimes.
@@ -50,6 +57,8 @@ def consigne(sujet: Sujet, version: str = "V1") -> str:
         )
     pieges = sorted({c.type for c in sujet.champs})
     attention = "\n".join(f"- {_PIEGES[t]}" for t in pieges)
+    if version == "V2" and "departement" in pieges:
+        attention += f"\n- {_DEPARTEMENT_V2}"
     return (
         f"{entete}\n\nRecopie l'ECRITURE MANUSCRITE, champ par champ :\n{liste}\n\n"
         f"{_REGLES_COMMUNES}\n\nAttention particuliere :\n{attention}\n"

@@ -103,3 +103,20 @@ def test_nom_prenom_et_sujet_identite():
                        columns=["cle", "champ", "lu"])  # fmt: skip
     f = saisie.au_format_fiqual(lus, s, 2025).set_index("champ")
     assert f.loc["NOM", "lu"] == "DURAND" and f.loc["PRENOM", "lu"] == "JEAN LUC"
+
+
+@pytest.mark.parametrize(
+    "valeur, attendu",
+    [
+        ("Rue", "R"),
+        ("boulevard", "BD"),
+        ("Bd", "BD"),
+        ("Chemin", "CHE"),
+        ("Quai", "QU"),
+        ("N", "N"),
+        ("ILLISIBLE", "ILLISIBLE"),
+        ("", ""),
+    ],
+)
+def test_type_voie(valeur, attendu):
+    assert saisie.type_voie(valeur) == attendu

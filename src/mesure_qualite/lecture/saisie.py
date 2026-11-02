@@ -14,6 +14,7 @@ etre juge faux a tort. On applique ici les memes regles aux lectures avant de co
                  libelle retire
   PAYS         : FRANCE avec un departement metropolitain -> blanc ; IRAK -> IRAQ
   NUMERO (Q23) : le plus petit numero (10-12 -> 10) ; INDICE : BIS -> B, TER -> T...
+  TYPE_VOIE    : abreviation du Fiqual (RUE -> R, BOULEVARD -> BD, CHEMIN -> CHE...)
   NOM, PRENOM  : civilite retiree (M, MME...) ; EPOUSE, NEE, VEUVE gardes
 
 ILLISIBLE et VIDE sont gardes tels quels : ce sont des abstentions du modele, jugees
@@ -230,6 +231,41 @@ def indice(valeur: object) -> str:
     return INDICES.get(v, v)
 
 
+# Types de voie : la forme ecrite -> l'abreviation du Fiqual. Vues dans le Fiqual RG25 :
+# R, BD, CHE, RTE, AV, CRS, RLE, QUA, QU. Les autres suivent la norme des adresses.
+TYPES_VOIE = {
+    "RUE": "R", "R": "R",
+    "BOULEVARD": "BD", "BD": "BD", "BLD": "BD", "BVD": "BD", "BOUL": "BD",
+    "AVENUE": "AV", "AV": "AV", "AVE": "AV",
+    "CHEMIN": "CHE", "CHE": "CHE", "CH": "CHE", "CHEM": "CHE",
+    "ROUTE": "RTE", "RTE": "RTE", "RT": "RTE",
+    "QUAI": "QU", "QU": "QU",
+    "QUARTIER": "QUA", "QUA": "QUA", "QRT": "QUA",
+    "RUELLE": "RLE", "RLE": "RLE",
+    "COURS": "CRS", "CRS": "CRS",
+    "PLACE": "PL", "PL": "PL",
+    "IMPASSE": "IMP", "IMP": "IMP",
+    "ALLEE": "ALL", "ALL": "ALL",
+    "RESIDENCE": "RES", "RES": "RES",
+    "LOTISSEMENT": "LOT", "LOT": "LOT",
+    "ZONE INDUSTRIELLE": "ZI", "ZI": "ZI",
+    "ZONE ARTISANALE": "ZA", "ZA": "ZA",
+    "SQUARE": "SQ", "SQ": "SQ",
+    "PASSAGE": "PAS", "PAS": "PAS",
+    "FAUBOURG": "FG", "FG": "FG",
+    "HAMEAU": "HAM", "HAM": "HAM",
+    "LIEU DIT": "LD", "LD": "LD",
+}  # fmt: skip
+
+
+def type_voie(valeur: object) -> str:
+    """RUE -> R, BOULEVARD -> BD... ; un type inconnu est garde tel quel."""
+    v = normaliser(valeur)
+    if _abstention(v):
+        return v
+    return TYPES_VOIE.get(v, v)
+
+
 # --- nom et prenom ----------------------------------------------------------------------
 CIVILITES = {"M", "MR", "MME", "MLLE", "MELLE", "MONSIEUR", "MADAME", "MADEMOISELLE"}
 
@@ -278,6 +314,7 @@ def au_format_fiqual(
         sortie = large.copy()
         sortie["NUMERO"] = large["NUMERO"].map(numero_voie)
         sortie["INDICE"] = large["INDICE"].map(indice)
+        sortie["TYPE_VOIE"] = large["TYPE_VOIE"].map(type_voie)
         sortie["DEPARTEMENT"] = large["DEPARTEMENT"].map(departement)
         sortie["COMMUNE"] = large["COMMUNE"].map(commune)
         sortie["PAYS"] = [
