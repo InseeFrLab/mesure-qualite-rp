@@ -266,6 +266,19 @@ def type_voie(valeur: object) -> str:
     return TYPES_VOIE.get(v, v)
 
 
+# --- sexe (case a cocher) ----------------------------------------------------------------
+SEXES = {"1": "1", "M": "1", "MASCULIN": "1", "HOMME": "1", "H": "1",
+         "2": "2", "F": "2", "FEMININ": "2", "FEMME": "2"}
+
+
+def sexe(valeur: object) -> str:
+    """Le code du Fiqual : 1 masculin, 2 feminin ; deux cases cochees ou autre chose -> blanc."""
+    v = normaliser(valeur)
+    if _abstention(v):
+        return v
+    return SEXES.get(v, "")
+
+
 # --- nom et prenom ----------------------------------------------------------------------
 CIVILITES = {"M", "MR", "MME", "MLLE", "MELLE", "MONSIEUR", "MADAME", "MADEMOISELLE"}
 
@@ -320,6 +333,8 @@ def au_format_fiqual(
         sortie["PAYS"] = [
             pays(p, dep) for p, dep in zip(large["PAYS"], sortie.DEPARTEMENT)
         ]
+    elif sujet.nom == "sexe":
+        sortie["SEXE"] = large["SEXE"].map(sexe)
     else:
         return d
     formate = sortie.stack().rename("lu_fiqual").reset_index()
