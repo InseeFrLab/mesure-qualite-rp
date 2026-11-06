@@ -1,0 +1,249 @@
+---
+title: "PMQ par IA"
+subtitle: "point de suivi 09/11/2026"
+author: ""
+date: "2026-11-09"
+lang: fr
+format:
+  insee-clair-revealjs:
+    css: point_etape_insee.css
+    scrollable: true
+    footer: ""
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+# Où en est-on ?
+
+## Rappel de l'objectif
+
+Produire le Fiqual automatiquement, en faisant **au moins aussi bien que la saisie actuelle du PMQ**, en taux d'erreurs.
+
+## Retour sur le point du 26/10 {.smaller}
+
+- Masque du bulletin calculé à partir du PDF vierge : **32 questions sur 32** retrouvées
+- Noms, prénoms et adresse du lieu de travail : les gros modèles fermés lisent mieux que gemma4
+- Restait à faire : **les autres questions du BI**, la date de naissance, et le choix d'un modèle interne
+
+**Depuis :**
+
+1. Les **gros modèles open-weight** sur le nom et prénom, la naissance et l'adresse du lieu de travail
+2. Le **sexe**, avec la règle de saisie du prénom
+3. Les **25 autres questions du BI**, sur **deux campagnes** (RG25 et RG26)
+4. Les **cases à cocher** lues par la densité de pixels, sans modèle
+
+## Où en est le pipeline
+
+{{< include ../_includes/pipeline.html >}}
+
+::: {.etats}
+<div><span class="etat fait">fait : masque appliqué aux 32 questions du BI</span></div>
+<div><span class="etat test">testé : toutes les questions du BI, RG25 et RG26</span></div>
+<div><span class="etat test">testé : densité de pixels pour les cases à cocher</span></div>
+<div><span class="etat afaire">à faire : feuille de logement</span></div>
+:::
+
+# Gros modèles open-weight
+
+## Nom et prénom, naissance, lieu de travail : RG25 {.smaller}
+
+| Lecteur | Nom et prénom | Date de naissance | Lieu de naissance | Voie, lieu de travail |
+|---|---|---|---|---|
+| PMQ | 98,7 % | 99,4 % | 99,4 % | 100,0 % |
+| gemma4 (interne) | 81,7 % | **96,4 %** | 83,8 % | 90,8 % |
+| qwen3-8-27b (interne) | 62,1 % | 83,4 % | 79,0 % | 85,9 % |
+| Qwen3-VL 235B | 78,4 % | 82,8 % | 88,6 % | 85,3 % |
+| Qwen3.5 397B | 77,1 % | | | 90,8 % |
+| Kimi K3 | 86,3 % | 89,9 % | 88,6 % | 89,0 % |
+| **Kimi K3.1 Pro** | **87,6 %** | 95,3 % | **94,0 %** | **95,1 %** |
+
+- **Kimi K3.1 Pro**, le meilleur open-weight, reste **sous le PMQ** sur le nom et prénom
+- **gemma4 est le meilleur sur la date de naissance**, devant tous les gros modèles
+- Département de naissance, avec la consigne V2 (règle des 2 ou 3 chiffres) : gemma4 **99,4 %**
+
+::: notes
+Nom et prénom, date, lieu et voie : les deux ou trois champs justes ensemble. 169 bulletins, vérité arbitrée par le SeRN. Kimi K3 et Qwen3.5 397B raisonnent avant de répondre : c'est ce qui explique leur lenteur.
+:::
+
+# Le sexe (q1)
+
+## Densité, modèle, puis règle du prénom {.smaller}
+
+- Consigne de saisie Q1 (C4/C9) : **aucune case ou deux cases cochées → sexe déduit du prénom** ; prénom vide, mixte ou inconnu → blanc
+- Règle codée : le premier mot du nom écrit présent dans le fichier des prénoms de l'Insee, s'il est d'un même sexe à au moins 95 %
+
+| Méthode (RG25, 169 bulletins) | Justes | IC 95 % | Silencieuses | Avouées |
+|---|---|---|---|---|
+| densité seule | 85,2 % | 79,1 - 89,8 | 0 | 25 |
+| modèle seul (gemma4) | 86,4 % | 80,4 - 90,8 | 0 | 23 |
+| densité + modèle | 86,4 % | 80,4 - 90,8 | 0 | 23 |
+| **densité + modèle + règle du prénom** | **98,2 %** | 94,9 - 99,4 | 1 | 2 |
+
+- Appliquée au prénom saisi par le PMQ, la règle reproduit la saisie dans **23 cas sur 23**
+- Les 3 erreurs restantes viennent de la **lecture du prénom**, pas de la règle
+
+# Toutes les questions du BI
+
+## Le périmètre {.smaller}
+
+::: {.stats}
+::: {.stat}
+<div class="n">25</div>
+<div class="l">questions du BI (q3 à q32)</div>
+<div class="d">16 à cases à cocher, 9 champs écrits à la main</div>
+:::
+::: {.stat}
+<div class="n">349</div>
+<div class="l">bulletins</div>
+<div class="d">169 en RG25, 180 en RG26</div>
+:::
+::: {.stat}
+<div class="n">0 €</div>
+<div class="l">modèles internes du SSP Cloud</div>
+<div class="d">gemma4-26b-moe et qwen3-8-27b : aucune image ne sort de l'Insee</div>
+:::
+:::
+
+- Cinq méthodes jugées **sur les mêmes bulletins** : gemma4 seul, qwen3 seul, densité seule, densité + gemma4, densité + qwen3
+- Chaque taux est calculé **seulement sur les bulletins où la personne a répondu** à la question
+  - exemple : q17 n'a que 14 réponses sur 169 bulletins, les autres personnes ne sont pas concernées
+  - compter les 155 blancs comme justes donnerait 97 % au lieu de 86 %
+
+## Cases à cocher : RG25 {.smaller}
+
+| Q | Question | Réponses | gemma4 seul | qwen3 seul | densité seule | densité + gemma4 | densité + qwen3 |
+|---|---|---|---|---|---|---|---|
+| q5 | études | 73 | 91,8 % | **100,0 %** | 97,3 % | **100,0 %** | **100,0 %** |
+| q6 | résidence au 1er janvier | 76 | 98,7 % | 97,4 % | 96,1 % | **100,0 %** | 98,7 % |
+| q9 | couple | 67 | **100,0 %** | **100,0 %** | **100,0 %** | **100,0 %** | **100,0 %** |
+| q10 | état matrimonial | 75 | 90,7 % | 92,0 % | 92,0 % | **93,3 %** | **93,3 %** |
+| q11 | limitation (santé) | 57 | **98,2 %** | **98,2 %** | 96,5 % | **98,2 %** | **98,2 %** |
+| q12 | diplôme | 149 | **98,0 %** | 97,3 % | 92,6 % | 97,3 % | 97,3 % |
+| q13 | situation principale | 75 | 96,0 % | **98,7 %** | 96,0 % | 97,3 % | 97,3 % |
+| q14 | travaille actuellement | 51 | 94,1 % | 96,1 % | 98,0 % | 98,0 % | **100,0 %** |
+| q16 | a déjà travaillé | 33 | 97,0 % | **100,0 %** | 97,0 % | 97,0 % | **100,0 %** |
+| q17 | statut du dernier emploi | 14 | 78,6 % | **85,7 %** | **85,7 %** | **85,7 %** | **85,7 %** |
+| q19 | recherche d'emploi | 21 | 95,2 % | **100,0 %** | 95,2 % | 95,2 % | 95,2 % |
+| q24 | mode de transport | 21 | 95,2 % | **100,0 %** | **100,0 %** | **100,0 %** | **100,0 %** |
+| q25 | télétravail | 27 | **100,0 %** | **100,0 %** | 96,3 % | **100,0 %** | **100,0 %** |
+| q26 | temps de travail | 31 | 96,8 % | **100,0 %** | **100,0 %** | **100,0 %** | **100,0 %** |
+| q28 | statut de l'emploi | 29 | **100,0 %** | **100,0 %** | 96,6 % | **100,0 %** | **100,0 %** |
+| q32 | position professionnelle | 23 | 95,7 % | **100,0 %** | 95,7 % | **100,0 %** | **100,0 %** |
+
+::: {.source}
+Part des réponses où la lecture est identique au Fiqual. En gras : la meilleure méthode de la ligne.
+:::
+
+## Cases à cocher : RG26 {.smaller}
+
+| Q | Question | Réponses | gemma4 seul | qwen3 seul | densité seule | densité + gemma4 | densité + qwen3 |
+|---|---|---|---|---|---|---|---|
+| q5 | études | 70 | 91,4 % | **100,0 %** | 92,9 % | **100,0 %** | **100,0 %** |
+| q6 | résidence au 1er janvier | 153 | 96,7 % | **98,0 %** | 92,8 % | **98,0 %** | **98,0 %** |
+| q9 | couple | 70 | **100,0 %** | **100,0 %** | 91,4 % | **100,0 %** | **100,0 %** |
+| q10 | état matrimonial | 78 | 93,6 % | 94,9 % | 94,9 % | 97,4 % | **98,7 %** |
+| q11 | limitation (santé) | 123 | 95,1 % | **97,6 %** | 91,1 % | 96,7 % | 96,7 % |
+| q12 | diplôme | 76 | **97,4 %** | **97,4 %** | 94,7 % | **97,4 %** | **97,4 %** |
+| q13 | situation principale | 78 | 96,2 % | **100,0 %** | 93,6 % | 98,7 % | 98,7 % |
+| q14 | travaille actuellement | 51 | 98,0 % | 98,0 % | 98,0 % | **100,0 %** | **100,0 %** |
+| q16 | a déjà travaillé | 27 | **100,0 %** | **100,0 %** | 96,3 % | **100,0 %** | **100,0 %** |
+| q17 | statut du dernier emploi | 17 | **88,2 %** | **88,2 %** | 82,4 % | **88,2 %** | **88,2 %** |
+| q19 | recherche d'emploi | 17 | 88,2 % | **94,1 %** | 88,2 % | **94,1 %** | **94,1 %** |
+| q24 | mode de transport | 16 | 87,5 % | **93,8 %** | 81,2 % | **93,8 %** | **93,8 %** |
+| q25 | télétravail | 26 | **96,2 %** | **96,2 %** | 88,5 % | **96,2 %** | **96,2 %** |
+| q26 | temps de travail | 29 | **100,0 %** | **100,0 %** | 89,7 % | **100,0 %** | **100,0 %** |
+| q28 | statut de l'emploi | 26 | **100,0 %** | **100,0 %** | **100,0 %** | **100,0 %** | **100,0 %** |
+| q29 | taille de l'entreprise | 6 | **100,0 %** | **100,0 %** | 66,7 % | **100,0 %** | **100,0 %** |
+| q32 | position professionnelle | 53 | 84,9 % | 88,7 % | 83,0 % | **92,5 %** | **92,5 %** |
+
+::: {.source}
+Part des réponses où la lecture est identique au Fiqual. En gras : la meilleure méthode de la ligne.
+:::
+
+## Ce qu'on en retient {.smaller}
+
+- **Densité + qwen3 fait au moins aussi bien que gemma4 seul sur 15 questions sur 16 en RG25, et 17 sur 17 en RG26**
+- **Les résultats tiennent en RG26** : même niveau, sur d'autres bulletins, avec le masque de 2025
+- La densité seule fait **peu d'erreurs silencieuses** : quand une case n'est pas nette, elle s'abstient
+- **qwen3 lit mieux les cases que gemma4** ; gemma4 lit mieux l'écriture (diapositive suivante)
+
+
+## Réponses écrites à la main {.smaller}
+
+| Q | Champ | RG25 gemma4 | RG25 qwen3 | RG26 gemma4 | RG26 qwen3 |
+|---|---|---|---|---|---|
+| q7 | département, parent 1 | **97,7 %** | 94,2 % | **92,6 %** | 85,3 % |
+| q7 | département, parent 2 | **92,5 %** | **92,5 %** | **89,6 %** | 84,4 % |
+| q7 | pays, parent 1 | **84,9 %** | 83,6 % | 82,3 % | **83,5 %** |
+| q7 | pays, parent 2 | 84,1 % | **87,0 %** | **81,1 %** | 75,7 % |
+| q18 | profession, dernier emploi | **90,9 %** | 72,7 % | 86,2 % | **93,1 %** |
+| q21 | nom de l'établissement | **85,7 %** | 64,3 % | **86,7 %** | 65,0 % |
+| q22 | activité de l'établissement | **80,8 %** | 76,9 % | **83,9 %** | 71,4 % |
+| q27 | profession, emploi actuel | **88,5 %** | 65,4 % | **88,0 %** | 76,0 % |
+
+- **gemma4 lit mieux l'écriture que qwen3**, nettement sur l'établissement et la profession
+- Le texte libre reste à **80-90 %** : une lettre fausse suffit à rendre le champ faux
+
+::: notes
+q18 : 11 réponses en RG25, 29 en RG26. Les autres champs écrits ont trop peu de réponses pour conclure : commune de résidence (4 en RG25), département de résidence (3 en RG26), année d'arrivée (1 en RG26).
+:::
+
+## Les erreurs qui restent : cases à cocher {.smaller}
+
+1. **Plusieurs cases marquées**
+   - la personne coche, rature, puis coche une autre case
+   - une case raturée contient **plus d'encre** qu'une case cochée : la densité retient la case annulée
+   - le modèle, lui, donne plusieurs codes (<span class="mot faux">456</span> pour <span class="mot bon">4</span>)
+2. **Une coche inventée par le modèle** sur une case que la densité voit vide
+3. **Un filtre du questionnaire** : une réponse à une question qui devait être sautée n'est pas saisie par le PMQ
+
+::: {.callout-note}
+Corrections prévues : si plusieurs cases sont encrées, le modèle tranche avec une consigne sur les ratures ; si aucune encre, réponse vide.
+:::
+
+## Les erreurs qui restent : écriture {.smaller}
+
+1. **Lettres manuscrites proches** : M et N, I et R, T et H
+2. **Le PMQ saisit le nom officiel du pays**, pas ce qui est écrit
+   - <span class="mot faux">SAN MARIN</span> saisi <span class="mot bon">SAINT MARIN</span>
+   - <span class="mot faux">COREE DU N</span> saisi <span class="mot bon">COREE DU NORD</span>
+   - correction prévue : rapprocher la lecture de la liste officielle des pays
+3. **Le modèle « corrige » un mot rare** en mot courant, malgré la consigne : erreur silencieuse, la plus difficile à repérer
+
+# La suite
+
+## Prochaines étapes {.smaller}
+
+1. **Valider les résultats de gemma4 sur LS3**, avec les vraies données : relancer les mêmes mesures une fois le modèle installé.
+2. **Entraîner un modèle d'OCR sur LS3**, avec les mêmes données.
+3. **Découper la feuille de logement** : masque calculé sur la page vierge, recalage et découpe des 7 images, comme pour le BI.
+4. **Compléter le BI** : mesurer nom, prénom, naissance et adresse du lieu de travail sur RG26 ; placer dans le Fiqual les questions qui manquent (nationalité, lieu d'études, type de contrat).
+5. **Lire la feuille de logement** et mesurer chaque question sur RG25 et RG26.
+6. **Finir la chaîne**, deux étapes menées en parallèle :
+   - étape 3, application des consignes de saisie : ratures, case sans encre, filtres du questionnaire, liste officielle des pays, règle du prénom
+   - étape 4, constitution du Fiqual
+7. **Mesure de bout en bout** : produire un Fiqual complet sur une campagne et le comparer à celui du PMQ.
+
+# Annexes
+
+## Erreurs silencieuses, toutes questions {.smaller}
+
+| | gemma4 seul | qwen3 seul | densité seule | densité + gemma4 | densité + qwen3 |
+|---|---|---|---|---|---|
+| RG25 | 90 | 101 | 10 | 20 | 15 |
+| RG26 | 118 | 128 | 13 | 27 | 24 |
+
+- **Attention à la lecture** : les colonnes « seul » comptent toutes les questions, écrites comprises ; les colonnes « densité » ne comptent que les cases à cocher
+- Comparaison sur les seules cases, RG25 : gemma4 seul **39**, densité + gemma4 **20**
+
+# Ressources
+
+## Liens utiles
+
+::: {.liens}
+- {{< fa brands github >}} [[**Dépôt GitHub**](https://github.com/InseeFrLab/mesure-qualite-rp)<br>InseeFrLab/mesure-qualite-rp : code, notebooks, présentation]{.lien}
+- {{< fa chart-line >}} [[**MLflow du projet**](https://projet-mesure-qualite-rp-mlflow.user.lab.sspcloud.fr/)<br>tous les essais : paramètres, métriques, fichiers de résultats]{.lien}
+- {{< fa cloud >}} [[**SSP Cloud**](https://datalab.sspcloud.fr/)<br>projet projet-mesure-qualite-rp : données, services, secrets]{.lien}
+:::
