@@ -16,3 +16,9 @@
   categories: ["synthèse", "production"]
   path: presentations/2026-10-14_point_etape_synthese.html
 
+- title: "Point suivi 09/11/2026"
+  description: "Ce qui est nouveau depuis le 26 octobre : les gros modèles open-weight, le sexe avec la règle du prénom, les 25 autres questions du BI sur RG25 et RG26, avec la densité de pixels pour les cases à cocher."
+  date: "2026-11-09"
+  categories: ["cases à cocher", "BI", "RG26"]
+  path: presentations/2026-11-09_point_etape_insee.html
+
