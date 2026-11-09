@@ -52,7 +52,7 @@ Produire le Fiqual automatiquement, en faisant **au moins aussi bien que la sais
 | Lecteur | Nom et prénom | Date de naissance | Lieu de naissance | Voie, lieu de travail |
 |---|---|---|---|---|
 | PMQ | 98,7 % | 99,4 % | 99,4 % | 100,0 % |
-| gemma4 (interne) | 81,7 % | **96,4 %** | 83,8 % | 90,8 % |
+| gemma4 (interne) | 84,2 % | **96,4 %** | 83,8 % | 90,8 % |
 | qwen3-8-27b (interne) | 62,1 % | 83,4 % | 79,0 % | 85,9 % |
 | Qwen3-VL 235B | 78,4 % | 82,8 % | 88,6 % | 85,3 % |
 | Qwen3.5 397B | 77,1 % | | | 90,8 % |
@@ -64,15 +64,15 @@ Produire le Fiqual automatiquement, en faisant **au moins aussi bien que la sais
 - Département de naissance, avec la consigne V2 (règle des 2 ou 3 chiffres) : gemma4 **99,4 %**
 
 ::: notes
-Nom et prénom, date, lieu et voie : les deux ou trois champs justes ensemble. 169 bulletins, vérité arbitrée par le SeRN. Kimi K3 et Qwen3.5 397B raisonnent avant de répondre : c'est ce qui explique leur lenteur.
+gemma4, nom et prénom : 84,2 %, le chiffre présenté depuis le 14/10 (noms et prénoms comptés un par un, contre la saisie du PMQ). Les autres chiffres du tableau comptent un bulletin juste quand les deux ou trois champs sont justes ensemble. 169 bulletins, vérité arbitrée par le SeRN. Kimi K3 et Qwen3.5 397B raisonnent avant de répondre : c'est ce qui explique leur lenteur.
 :::
 
 # Le sexe (q1)
 
 ## Densité, modèle, puis règle du prénom {.smaller}
 
-- Consigne de saisie Q1 (C4/C9) : **aucune case ou deux cases cochées → sexe déduit du prénom** ; prénom vide, mixte ou inconnu → blanc
-- Règle codée : le premier mot du nom écrit présent dans le fichier des prénoms de l'Insee, s'il est d'un même sexe à au moins 95 %
+- Consigne de saisie du sexe : **aucune case ou deux cases cochées → sexe déduit du prénom** ; prénom vide, mixte ou inconnu → blanc
+- Règle codée : le premier mot de la ligne nom-prénom présent dans le fichier des prénoms de l'Insee ; on garde son sexe s'il est porté à au moins 95 % par des hommes ou par des femmes
 
 | Méthode (RG25, 169 bulletins) | Justes | IC 95 % | Silencieuses | Avouées |
 |---|---|---|---|---|
@@ -98,11 +98,6 @@ Nom et prénom, date, lieu et voie : les deux ou trois champs justes ensemble. 1
 <div class="n">349</div>
 <div class="l">bulletins</div>
 <div class="d">169 en RG25, 180 en RG26</div>
-:::
-::: {.stat}
-<div class="n">0 €</div>
-<div class="l">modèles internes du SSP Cloud</div>
-<div class="d">gemma4-26b-moe et qwen3-8-27b : aucune image ne sort de l'Insee</div>
 :::
 :::
 
@@ -190,27 +185,25 @@ Part des réponses où la lecture est identique au Fiqual. En gras : la meilleur
 q18 : 11 réponses en RG25, 29 en RG26. Les autres champs écrits ont trop peu de réponses pour conclure : commune de résidence (4 en RG25), département de résidence (3 en RG26), année d'arrivée (1 en RG26).
 :::
 
-## Les erreurs qui restent : cases à cocher {.smaller}
+## Les erreurs qui restent {.smaller}
 
-1. **Plusieurs cases marquées**
-   - la personne coche, rature, puis coche une autre case
-   - une case raturée contient **plus d'encre** qu'une case cochée : la densité retient la case annulée
-   - le modèle, lui, donne plusieurs codes (<span class="mot faux">456</span> pour <span class="mot bon">4</span>)
-2. **Une coche inventée par le modèle** sur une case que la densité voit vide
-3. **Un filtre du questionnaire** : une réponse à une question qui devait être sautée n'est pas saisie par le PMQ
+:::: {.columns}
+::: {.column width="50%"}
+**Cases à cocher : plusieurs cases marquées**
 
-::: {.callout-note}
-Corrections prévues : si plusieurs cases sont encrées, le modèle tranche avec une consigne sur les ratures ; si aucune encre, réponse vide.
+- la personne coche, rature, puis coche une autre case
+- une case raturée contient **plus d'encre** qu'une case cochée : la densité retient la case annulée
 :::
+::: {.column width="50%"}
+**Écriture**
 
-## Les erreurs qui restent : écriture {.smaller}
-
-1. **Lettres manuscrites proches** : M et N, I et R, T et H
+1. **Lettres manuscrites proches**
 2. **Le PMQ saisit le nom officiel du pays**, pas ce qui est écrit
    - <span class="mot faux">SAN MARIN</span> saisi <span class="mot bon">SAINT MARIN</span>
    - <span class="mot faux">COREE DU N</span> saisi <span class="mot bon">COREE DU NORD</span>
    - correction prévue : rapprocher la lecture de la liste officielle des pays
-3. **Le modèle « corrige » un mot rare** en mot courant, malgré la consigne : erreur silencieuse, la plus difficile à repérer
+:::
+::::
 
 # La suite
 
@@ -219,24 +212,12 @@ Corrections prévues : si plusieurs cases sont encrées, le modèle tranche avec
 1. **Valider les résultats de gemma4 sur LS3**, avec les vraies données : relancer les mêmes mesures une fois le modèle installé.
 2. **Entraîner un modèle d'OCR sur LS3**, avec les mêmes données.
 3. **Découper la feuille de logement** : masque calculé sur la page vierge, recalage et découpe des 7 images, comme pour le BI.
-4. **Compléter le BI** : mesurer nom, prénom, naissance et adresse du lieu de travail sur RG26 ; placer dans le Fiqual les questions qui manquent (nationalité, lieu d'études, type de contrat).
+4. **Compléter le BI** : mesurer nom, prénom, naissance et adresse du lieu de travail sur RG26.
 5. **Lire la feuille de logement** et mesurer chaque question sur RG25 et RG26.
 6. **Finir la chaîne**, deux étapes menées en parallèle :
    - étape 3, application des consignes de saisie : ratures, case sans encre, filtres du questionnaire, liste officielle des pays, règle du prénom
    - étape 4, constitution du Fiqual
 7. **Mesure de bout en bout** : produire un Fiqual complet sur une campagne et le comparer à celui du PMQ.
-
-# Annexes
-
-## Erreurs silencieuses, toutes questions {.smaller}
-
-| | gemma4 seul | qwen3 seul | densité seule | densité + gemma4 | densité + qwen3 |
-|---|---|---|---|---|---|
-| RG25 | 90 | 101 | 10 | 20 | 15 |
-| RG26 | 118 | 128 | 13 | 27 | 24 |
-
-- **Attention à la lecture** : les colonnes « seul » comptent toutes les questions, écrites comprises ; les colonnes « densité » ne comptent que les cases à cocher
-- Comparaison sur les seules cases, RG25 : gemma4 seul **39**, densité + gemma4 **20**
 
 # Ressources
 
