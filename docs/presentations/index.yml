@@ -22,3 +22,9 @@
   categories: ["cases à cocher", "BI", "RG26"]
   path: presentations/2026-11-09_point_etape_insee.html
 
+- title: "Point suivi 23/11/2026"
+  description: "Ce qui est nouveau depuis le 9 novembre : la chaîne complète sur LS3 avec les vraies données, les lots lancés par Argo, les premiers résultats et les consignes de lieu, et un OCR entraîné sur nos lignes."
+  date: "2026-11-23"
+  categories: ["LS3", "chaîne", "OCR"]
+  path: presentations/2026-11-23_point_etape_insee.html
+
