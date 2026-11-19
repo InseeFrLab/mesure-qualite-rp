@@ -1,0 +1,245 @@
+---
+title: "PMQ par IA"
+subtitle: "point de suivi 23/11/2026"
+author: ""
+date: "2026-11-23"
+lang: fr
+format:
+  insee-clair-revealjs:
+    css: point_etape_insee.css
+    scrollable: true
+    footer: ""
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+# Où en est-on ?
+
+## Rappel de l'objectif
+
+Produire le Fiqual automatiquement, en faisant **au moins aussi bien que la saisie actuelle du PMQ**, en taux d'erreurs.
+
+## Retour sur le point du 09/11 {.smaller}
+
+| Prévu le 09/11 | Où on en est |
+|---|---|
+| Valider gemma4 sur LS3, avec les vraies données | **en cours** : chaîne complète sur LS3, 3 lots mesurés |
+| Entraîner un modèle d'OCR sur LS3 | **en cours** : jeu de 90 538 lignes, deux modèles en entraînement |
+| Compléter le BI | **fait** : 30 questions, 55 colonnes du Fiqual |
+| Finir la chaîne : consignes (étape 3) et Fiqual (étape 4) | **en cours** : la chaîne tourne de bout en bout ; les consignes restent à vérifier variable par variable |
+| Mesure de bout en bout | **fait** sur LS12, LS01 et LS02 |
+| Découper et lire la feuille de logement | **en attente** du PDF d'impression 2026 |
+
+::: notes
+Les nombres de lots mesurés sont ceux du jeudi 19/11. Les mettre à jour avec le bilan du lundi matin.
+:::
+
+## Où en est le pipeline
+
+{{< include ../_includes/pipeline.html >}}
+
+::: {.etats}
+<div><span class="etat fait">fait : la chaîne de bout en bout sur LS3, mesurée</span></div>
+<div><span class="etat test">en cours : les consignes, variable par variable</span></div>
+<div><span class="etat test">en cours : les 12 lots, un OCR entraîné</span></div>
+<div><span class="etat afaire">à faire : feuille de logement</span></div>
+:::
+
+# La chaîne sur LS3
+
+## Ce qui tourne {.smaller}
+
+::: {.stats}
+::: {.stat}
+<div class="n">12</div>
+<div class="l">lots reçus</div>
+<div class="d">1 170 BI par lot ; LS01 incomplet</div>
+:::
+::: {.stat}
+<div class="n">30</div>
+<div class="l">questions du BI lues</div>
+<div class="d">55 colonnes sur 76 de la ligne BI du Fiqual</div>
+:::
+::: {.stat}
+<div class="n">100 %</div>
+<div class="l">des bulletins recalés</div>
+<div class="d">30 blocs par bulletin, 33 930 découpes par lot</div>
+:::
+:::
+
+- **Une étape = une commande** : ingestion, découpe, lecture, consignes, Fiqual, puis évaluation
+- Une étape déjà faite **n'est pas refaite** ; chaque réponse du modèle est gardée : on peut relancer sans risque
+- **Production et évaluation séparées** : le Fiqual reçu, les divergences et le Ficod ne servent qu'à mesurer
+- Tout est enregistré dans **MLflow** : un run par lot et par étape, un bilan sur tous les lots
+
+## Les lots tournent dans Argo {.smaller}
+
+- Depuis le 18/11, les lots sont lancés par **Argo Workflows**, et plus depuis un notebook
+  - chaque lot : production, puis évaluation, puis bilan
+  - une étape qui échoue est **relancée automatiquement**, avec le code à jour
+- **Une seule lecture à la fois**, pour respecter la limite du service de modèles
+- **GPU H100 testé** sur LS3 : prêt pour l'ajustement des modèles d'OCR
+
+::: notes
+Argo : un « chef de chantier ». On lui donne un plan (un fichier texte), il lance chaque étape dans un conteneur à part, relance ce qui plante et montre l'avancement dans une page web. Le GPU est une seule carte pour toute la plateforme : on le réserve le temps du calcul, puis on le libère.
+:::
+
+## L'inventaire des lots {.smaller}
+
+- **LS02 à LS12** : 8 zips, 1 170 BI et 1 280 FL par lot, comme dans le Fiqual
+- **LS01** : un zip manque, 1 041 BI au lieu de 1 170
+- **Plusieurs Fiqual pour un même lot** (LS02, LS04, LS11) : on travaille avec **le plus récent**
+- **LS01 et LS02** ont beaucoup plus de personnes nées à l'étranger : il faut lire les résultats **par lot**, pas seulement au total
+
+# Premiers résultats sur les vraies données
+
+## Comment on mesure {.smaller}
+
+| Cas | Situation | Référence |
+|---|---|---|
+| A | les deux saisies sont d'accord | la valeur du Fiqual |
+| B | divergence arbitrée | la valeur arbitrée |
+| C | divergence non arbitrée | champ exclu de la mesure |
+
+- Par champ : nombre jugé, taux de justes, **intervalle de confiance à 95 %**
+- On mesure une **concordance avec la saisie du PMQ**, pas une justesse absolue
+
+## Ce qui marche, ce qui reste difficile {.smaller}
+
+- **Presque parfait** : la plupart des **cases à cocher** (de 97 à 99,7 %) et la **date de naissance** (environ 97 %)
+- **Difficile : le texte libre écrit à la main**
+
+| Champ | LS01 | LS02 | LS12 | Total |
+|---|---|---|---|---|
+| commune de naissance | 52,0 % | 51,3 % | 74,2 % | **59,4 %** |
+| nom | 75,2 % | 71,8 % | 74,6 % | **73,8 %** |
+| prénom | 72,3 % | 70,4 % | 85,2 % | **76,1 %** |
+| nationalité | 76,3 % | 63,5 % | 89,1 % | **76,3 %** |
+| pays de naissance | 71,3 % | 72,8 % | 94,4 % | **79,8 %** |
+| pays du parent 1 | 89,4 % | 76,5 % | 88,8 % | **84,7 %** |
+| pays du parent 2 | 91,2 % | 80,4 % | 89,5 % | **86,9 %** |
+| département de naissance | 81,3 % | 85,1 % | 93,5 % | **86,9 %** |
+| lieu d'études | 86,1 % | 81,4 % | 94,4 % | **87,3 %** |
+| voie du lieu de travail | 93,9 % | 94,7 % | 87,7 % | **92,0 %** |
+| nom de l'établissement | 95,3 % | 96,8 % | 88,1 % | **93,3 %** |
+
+- **LS01 et LS02 sont plus bas** sur la naissance et la nationalité : plus de personnes nées à l'étranger
+
+::: notes
+3 381 bulletins : LS01 (1 041), LS02 (1 170) et LS12 (1 170). Lecteur : gemma4, service de modèles de LS3. Les champs difficiles sont exactement ceux où un OCR entraîné sur nos lignes et les listes de l'Insee peuvent aider. À l'inverse, LS12 est plus bas sur l'adresse du lieu de travail : à analyser.
+:::
+
+## Lieu de naissance : appliquer les consignes {.smaller}
+
+Le modèle lit **ce qui est écrit**. Le PMQ saisit **ce que demandent les consignes**. Trois règles ont été ajoutées :
+
+| Ce qui est écrit sur le bulletin | Ce que le PMQ saisit (consignes) |
+|---|---|
+| pays : GUADELOUPE | pays : GUADELOUPE **et** département : 971 |
+| commune : MAROC, pays vide | pays : MAROC, commune vide |
+| une commune, département vide | département vide : **on ne le devine pas** |
+
+Résultat, part des champs justes **sans** puis **avec** ces règles :
+
+| Champ | LS01 sans | LS01 avec | LS02 sans | LS02 avec | LS12 sans | LS12 avec |
+|---|---|---|---|---|---|---|
+| pays de naissance | 63,6 % | **71,3 %** | 64,6 % | **72,8 %** | 93,7 % | **94,4 %** |
+| département de naissance | 78,6 % | **81,3 %** | 83,3 % | **85,1 %** | 93,5 % | **93,5 %** |
+| commune de naissance | 49,2 % | **52,0 %** | 47,5 % | **51,3 %** | 73,5 % | **74,2 %** |
+
+- Gain le plus fort là où il y a le plus de personnes nées à l'étranger (LS01, LS02) ; **aucune perte**, sur aucun lot
+
+::: notes
+LS12 « sans » : la mesure du 17/11, faite avant l'ajout des règles. LS01 et LS02 « sans » : mesurés le 19/11, juste avant.
+
+Une première version déduisait le département à partir de la seule commune. Sur LS01, c'était faux 68 fois sur 83 : la règle a été retirée. C'est pour ça qu'on mesure chaque règle avant de l'activer.
+:::
+
+# Un OCR entraîné sur LS3
+
+## Le jeu d'entraînement {.smaller}
+
+| Partie | Lots | Lignes |
+|---|---|---|
+| entraînement | LS1 à LS10 | 75 220 |
+| validation | LS11 | 7 640 |
+| test | LS12 | 7 678 |
+| **total** | | **90 538** |
+
+- 7 champs : nom, prénom, jour, mois et année de naissance, département et commune de naissance
+- Chaque ligne est découpée dans les découpes déjà faites : **aucune nouvelle lecture des scans**
+- Texte attendu : la vérité A ou B ; un lot est **entièrement** dans une seule partie
+- Les données restent sur LS3
+
+## Les modèles {.smaller}
+
+| Modèle | Ajusté sur nos lignes | Lignes entièrement justes | Lettres fausses (CER) |
+|---|---|---|---|
+| TrOCR français | non | 48,1 % | 27,1 % |
+| TrOCR base | non | 39,7 % | 39,7 % |
+| PyLaia POPP | non | 0,1 % | 102,1 % |
+| PyLaia POPP, repris et ajusté | oui, 5 époques | 65,7 % | 21,8 % |
+| **notre modèle, entraîné de zéro** | oui, 13 époques | **77,1 %** | **12,1 %** |
+
+- Deux mesures différentes : une ligne avec **une seule lettre fausse** compte comme fausse, mais ne fait qu'une petite part des lettres fausses
+- Les trois premiers : **tels quels**, sur le test LS12. Les deux derniers : sur la validation LS11, entraînement en cours
+- Notre modèle : 4,5 millions de paramètres, entraîné **sur processeur**, sans GPU
+
+::: notes
+PyLaia POPP dépasse 100 % de lettres fausses : il écrit plus de lettres qu'il n'y en a à lire, et laisse 15 % des lignes vides. Il a été entraîné sur des tableaux de recensement de Paris, avec une autre écriture et une autre façon de saisir.
+
+Sans ajustement, aucun modèle public ne lit nos formulaires : ils n'ont jamais vu cette écriture, ni le format de la saisie (majuscules sans accents). PyLaia POPP a été entraîné sur les recensements de Paris : il écrit autre chose que ce que le Fiqual attend. Le test final sur LS12 se fait une seule fois, à la fin de l'entraînement.
+:::
+
+## Notre modèle, champ par champ {.smaller}
+
+Mesuré sur **LS11, un lot que le modèle n'a jamais vu** pendant l'entraînement :
+
+| Champ | Lignes entièrement justes | Ce qu'on en retient |
+|---|---|---|
+| jour de naissance | **97,0 %** | même niveau que gemma4 (environ 97 %) |
+| mois de naissance | **97,5 %** | même niveau que gemma4 |
+| année de naissance | **96,5 %** | même niveau que gemma4 |
+| département de naissance | 91,9 % | bon, mais encore à améliorer |
+| nom | 60,0 % | difficile |
+| prénom | 58,0 % | difficile |
+| commune de naissance | 39,1 % | difficile |
+
+- **Les chiffres** : un petit modèle, sur processeur, lit **aussi bien que gemma4**
+- **Les noms et les communes** : des milliers de mots possibles, et une lettre fausse suffit à rendre la ligne fausse
+  - pistes : **les listes de l'Insee** (prénoms, communes) au moment de lire, et **TrOCR ajusté sur GPU**
+- Comparaison exacte avec gemma4 : **sur les mêmes lignes de LS12**, au test final
+
+::: notes
+Ce n'est pas un manque de données : les 7 champs ont à peu près le même nombre de lignes d'entraînement (environ 11 500 pour le nom comme pour l'année). Les noms sont simplement plus difficiles : chaque nom est presque unique, alors qu'un jour n'a que 31 valeurs possibles.
+:::
+
+# La suite
+
+## Prochaines étapes {.smaller}
+
+1. **Finir les 12 lots** dans Argo, et faire le bilan complet, lot par lot
+2. **Les consignes, variable par variable** : vérifier pour chaque variable lue ce que le document de consignes demande pour le Fiqual ; d'abord le pays et le département des parents (q7), la nationalité et le lieu d'études
+3. **Test final des modèles d'OCR sur LS12**, et comparaison avec gemma4 sur les mêmes lignes
+4. **Ajuster TrOCR sur le GPU** de LS3, avec le même jeu et la même mesure
+5. **Combiner les lecteurs** : quand l'OCR et gemma4 lisent la même chose, on accepte ; sinon, à vérifier
+6. **Tester Gaia**, le référentiel géographique de l'Insee, sur la commune de naissance
+7. **Feuille de logement** : gabarit, découpe et lecture, dès le PDF d'impression 2026
+
+## Ce que nous attendons {.smaller}
+
+| Quoi | Pour quoi | De qui |
+|---|---|---|
+| PDF d'impression 2026 de la feuille de logement | gabarit et découpe de la FL | métier |
+| Annexe 2 des consignes de saisie | règles encore manquantes | métier |
+| Dessin d'enregistrement du Fiqual | colonnes « à confirmer » | métier |
+
+# Ressources
+
+## Liens utiles
+
+::: {.liens}
+- {{< fa brands github >}} [[**Dépôt GitHub**](https://github.com/InseeFrLab/mesure-qualite-rp)<br>InseeFrLab/mesure-qualite-rp : code, notebooks, présentation]{.lien}
+:::
